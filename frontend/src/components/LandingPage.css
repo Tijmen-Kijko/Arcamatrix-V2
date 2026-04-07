@@ -1,0 +1,112 @@
+/* ═══════════════════════════════════════
+   LANDING LAYOUT — split-screen
+═══════════════════════════════════════ */
+.landing-layout {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+}
+
+/* ── Left panel ─────────────────────── */
+.left-panel {
+  width: var(--left-w);
+  min-width: var(--left-w);
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  transition:
+    width 750ms var(--ease-smooth),
+    min-width 750ms var(--ease-smooth);
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+/* ── Right panel ────────────────────── */
+.right-panel {
+  flex: 1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 44px;
+  position: relative;
+  transition: padding 750ms var(--ease-smooth);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* Atmospheric background */
+.right-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 65% 25%, rgba(255,255,255,0.02) 0%, transparent 70%),
+    radial-gradient(ellipse 45% 35% at 35% 75%, rgba(200,180,130,0.025) 0%, transparent 65%);
+  pointer-events: none;
+  transition: opacity 600ms ease;
+}
+
+/* ═══════════════════════════════════════
+   TRANSITION STATES
+═══════════════════════════════════════ */
+
+/* .transitioning: signup fades, width starts changing */
+.landing-layout.transitioning .signup-view {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* .ws-mode: sidebar visible, window goes full */
+.landing-layout.ws-mode .left-panel {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+}
+
+.landing-layout.ws-mode .right-panel {
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.landing-layout.ws-mode .right-panel::before {
+  opacity: 0;
+}
+
+.landing-layout.ws-mode .sidebar-view {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.landing-layout.ws-mode .signup-view {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════
+   WORKSPACE WINDOW — full in ws-mode
+═══════════════════════════════════════ */
+.landing-layout.ws-mode .ws-window {
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  max-width: 100%;
+  max-height: 100vh;
+}
+
+.landing-layout.ws-mode .ws-label {
+  opacity: 0;
+  max-height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+/* ── Workspace mode: reveal brief content ── */
+.landing-layout.ws-mode .brief-fade::after {
+  opacity: 0;
+}
+.landing-layout.ws-mode .brief-more {
+  display: block;
+}

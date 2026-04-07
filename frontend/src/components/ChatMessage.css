@@ -1,0 +1,163 @@
+/* ═══════════════════════════════════════
+   CHAT MESSAGES — F-05
+   Timing reference: arcamatrix-v2.html
+═══════════════════════════════════════ */
+
+/* Message container — reveal animation */
+.msg {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 380ms ease, transform 380ms ease;
+}
+.msg.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Avatar ──────────────────────────── */
+.msg-av {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  margin-top: 1px;
+}
+.msg-av.you {
+  background: var(--surface-3);
+  color: var(--muted);
+}
+.msg-av.ai {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text);
+}
+
+/* ── Body ────────────────────────────── */
+.msg-body {
+  max-width: 86%;
+}
+
+.msg-name {
+  font-size: 11px;
+  color: var(--faint);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+/* ── Bubble ──────────────────────────── */
+.msg-bubble {
+  display: inline-block;
+  padding: 9px 13px;
+  border-radius: 4px 12px 12px 12px;
+  font-size: 13.5px;
+  line-height: 1.58;
+  color: var(--text);
+  background: var(--surface-2);
+}
+.msg.you .msg-bubble {
+  background: transparent;
+  padding-left: 0;
+}
+
+/* ── Status (pulsing green dot) ──────── */
+.msg-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--muted);
+  padding: 6px 0 2px;
+}
+.status-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: blink 1.4s ease-in-out infinite;
+}
+
+/* ── Pills ───────────────────────────── */
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+/* ── Brief content ───────────────────── */
+.brief {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+}
+.brief strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.brief .dim {
+  color: var(--muted);
+}
+.brief hr {
+  border: none;
+  border-top: 1px solid var(--border-soft);
+  margin: 10px 0;
+}
+
+/* Fade mask on brief (removed in workspace mode) */
+.brief-fade {
+  position: relative;
+  overflow: hidden;
+}
+.brief-fade::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(transparent, var(--surface-2));
+  transition: opacity 500ms ease;
+}
+
+/* brief-more: hidden by default, shown in workspace mode */
+.brief-more {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: pre-line;
+  display: none;
+}
+
+/* Typewriter cursor */
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  background: var(--muted);
+  vertical-align: middle;
+  margin-left: 1px;
+  animation: blink 1s step-end infinite;
+}

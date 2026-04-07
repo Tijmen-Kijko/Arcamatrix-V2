@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arcamatrix — One AI that executes tasks</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+    :root {
+      --bg:          #0d0c0b;
+      --surface:     #161513;
+      --surface-2:   #1e1c1a;
+      --surface-3:   #272421;
+      --border:      rgba(255,255,255,0.07);
+      --border-soft: rgba(255,255,255,0.04);
+      --text:        #e9e7e4;
+      --muted:       #79776f;
+      --faint:       #3e3c39;
+      --green:       #4ade80;
+      --left-w:      420px;
+      --sidebar-w:   220px;
+      --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+      --font: 'Inter', system-ui, sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+    }
+
+    #app {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ═══════════════════════════════════════
+       LEFT PANEL
+    ═══════════════════════════════════════ */
+    #leftPanel {
+      width: var(--left-w);
+      min-width: var(--left-w);
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+      border-right: 1px solid var(--border);
+      transition:
+        width 750ms var(--ease-smooth),
+        min-width 750ms var(--ease-smooth);
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    /* — Signup view — */
+    #signupView {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 32px 40px;
+      opacity: 1;
+      transition: opacity 350ms ease;
+    }
+
+    .logo-row {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .logo-mark { flex-shrink: 0; }
+    .logo-name { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+
+    .signup-main { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+    .signup-headline {
+      font-size: clamp(22px, 2vw, 27px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.18;
+      margin-bottom: 9px;
+    }
+    .signup-sub {
+      font-size: 13px; color: var(--muted); line-height: 1.55; margin-bottom: 28px; max-width: 28ch;
+    }
+
+    .btn-google {
+      display: flex; align-items: center; justify-content: center; gap: 9px;
+      width: 100%; padding: 10px 16px;
+      border-radius: 9px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text);
+      font-size: 13.5px; font-weight: 500; font-family: var(--font);
+      cursor: pointer;
+      transition: background 180ms, border-color 180ms;
+    }
+    .btn-google:hover { background: var(--surface-2); border-color: rgba(255,255,255,0.13); }
+
+    .divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 16px 0; color: var(--faint); font-size: 11px;
+    }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    .form-label { display: block; font-size: 11.5px; color: var(--muted); font-weight: 500; margin-bottom: 5px; }
+    .form-input {
+      width: 100%; padding: 10px 13px;
+      border-radius: 9px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text);
+      font-size: 13.5px; font-family: var(--font);
+      outline: none; margin-bottom: 10px;
+      transition: border-color 180ms;
+    }
+    .form-input::placeholder { color: var(--faint); }
+    .form-input:focus { border-color: rgba(255,255,255,0.22); }
+
+    .btn-primary {
+      width: 100%; padding: 10px 16px;
+      border-radius: 9px; border: none;
+      background: var(--text); color: var(--bg);
+      font-size: 13.5px; font-weight: 600; font-family: var(--font);
+      cursor: pointer; transition: opacity 180ms;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+
+    .trust-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 18px; }
+    .trust-chip {
+      display: flex; align-items: center; gap: 5px;
+      padding: 3px 9px; border-radius: 99px;
+      border: 1px solid var(--border);
+      font-size: 11px; color: var(--muted);
+    }
+    .trust-chip .live { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+
+    .signup-footer {
+      font-size: 11px; color: var(--faint); line-height: 1.6;
+    }
+    .signup-footer a { color: var(--muted); text-decoration: none; }
+    .signup-footer a:hover { color: var(--text); }
+    .login-hint { font-size: 12.5px; color: var(--muted); margin-bottom: 14px; }
+    .login-hint a { color: var(--text); font-weight: 500; text-decoration: none; }
+
+    /* — Sidebar view — */
+    #sidebarView {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 0 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 450ms ease;
+      background: var(--bg);
+      width: var(--sidebar-w);
+    }
+
+    .sb-logo {
+      display: flex; align-items: center; gap: 9px;
+      padding: 0 16px 20px;
+      border-bottom: 1px solid var(--border-soft);
+      margin-bottom: 8px;
+    }
+    .sb-logo-icon {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--surface-2);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .sb-logo-text { line-height: 1.2; }
+    .sb-logo-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .sb-logo-ws   { font-size: 11px; color: var(--muted); }
+
+    .sb-nav { flex: 1; padding: 0 8px; display: flex; flex-direction: column; gap: 1px; }
+
+    .sb-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 7px;
+      font-size: 13px; color: var(--muted);
+      cursor: pointer; transition: background 150ms, color 150ms;
+      user-select: none;
+    }
+    .sb-item:hover { background: var(--surface); color: var(--text); }
+    .sb-item.active { background: var(--surface-2); color: var(--text); }
+    .sb-item svg { flex-shrink: 0; opacity: 0.7; }
+    .sb-item.active svg { opacity: 1; }
+    .sb-item .chevron { margin-left: auto; opacity: 0.4; font-size: 10px; }
+
+    .sb-section-label {
+      font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase;
+      color: var(--faint); padding: 14px 10px 5px; font-weight: 600;
+    }
+
+    .sb-channel {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 10px; border-radius: 7px;
+      font-size: 12.5px; color: var(--muted);
+      cursor: pointer; transition: background 150ms, color 150ms;
+    }
+    .sb-channel:hover { background: var(--surface); color: var(--text); }
+    .sb-channel-icon {
+      width: 20px; height: 20px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; flex-shrink: 0;
+    }
+
+    .sb-bottom {
+      padding: 8px 10px 0;
+      border-top: 1px solid var(--border-soft);
+      margin-top: 8px;
+    }
+    .sb-feedback {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px; border-radius: 7px;
+      font-size: 12px; color: var(--faint);
+      cursor: pointer; transition: color 150ms;
+    }
+    .sb-feedback:hover { color: var(--muted); }
+
+    /* ═══════════════════════════════════════
+       RIGHT PANEL
+    ═══════════════════════════════════════ */
+    #rightPanel {
+      flex: 1;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 36px 44px;
+      position: relative;
+      transition: padding 750ms var(--ease-smooth);
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    /* Atmospheric bg */
+    #rightPanel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 55% at 65% 25%, rgba(255,255,255,0.02) 0%, transparent 70%),
+        radial-gradient(ellipse 45% 35% at 35% 75%, rgba(200,180,130,0.025) 0%, transparent 65%);
+      pointer-events: none;
+      transition: opacity 600ms ease;
+    }
+
+    #wsLabel {
+      font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--faint); margin-bottom: 14px; text-align: center;
+      transition: opacity 400ms ease, max-height 400ms ease, margin 400ms ease;
+      max-height: 30px; overflow: hidden; position: relative; z-index: 1;
+    }
+
+    #wsWindow {
+      width: 100%; max-width: 720px;
+      display: flex; flex-direction: column;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 40px 90px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.04);
+      transition:
+        border-radius 750ms var(--ease-smooth),
+        border-color 600ms ease,
+        box-shadow 600ms ease,
+        max-width 750ms var(--ease-smooth);
+      position: relative; z-index: 1;
+      flex: 1;
+      max-height: calc(100vh - 120px);
+    }
+
+    .ws-titlebar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--border-soft);
+      flex-shrink: 0;
+    }
+    .ws-dot { width: 9px; height: 9px; border-radius: 50%; }
+    .ws-dot:nth-child(1) { background: #ff5f57; }
+    .ws-dot:nth-child(2) { background: #ffbd2e; }
+    .ws-dot:nth-child(3) { background: #28c840; }
+    .ws-title { flex: 1; text-align: center; font-size: 11.5px; color: var(--faint); font-weight: 500; }
+    .ws-title-spacer { width: 42px; }
+
+    #wsChat {
+      flex: 1; overflow-y: auto; padding: 20px 22px 8px;
+      display: flex; flex-direction: column; gap: 14px;
+      scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent;
+    }
+    #wsChat::-webkit-scrollbar { width: 4px; }
+    #wsChat::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 4px; }
+
+    /* Chat messages */
+    .msg {
+      display: flex; gap: 10px; align-items: flex-start;
+      opacity: 0; transform: translateY(6px);
+      transition: opacity 380ms ease, transform 380ms ease;
+    }
+    .msg.show { opacity: 1; transform: translateY(0); }
+
+    .msg-av {
+      width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10.5px; font-weight: 700; margin-top: 1px;
+    }
+    .msg-av.you { background: var(--surface-3); color: var(--muted); }
+    .msg-av.ai  { background: rgba(255,255,255,0.09); color: var(--text); }
+
+    .msg-body { max-width: 86%; }
+
+    .msg-name { font-size: 11px; color: var(--faint); margin-bottom: 4px; font-weight: 500; }
+
+    .msg-bubble {
+      display: inline-block; padding: 9px 13px;
+      border-radius: 4px 12px 12px 12px;
+      font-size: 13.5px; line-height: 1.58; color: var(--text);
+      background: var(--surface-2);
+    }
+    .msg.you .msg-bubble { background: transparent; padding-left: 0; }
+
+    .msg-status {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12.5px; color: var(--muted);
+      padding: 6px 0 2px;
+    }
+    .status-pulse {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+      animation: blink 1.4s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--surface-3); border: 1px solid var(--border);
+      border-radius: 99px; padding: 4px 10px;
+      font-size: 11.5px; color: var(--muted);
+    }
+
+    /* Brief content */
+    .brief {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px; margin-top: 8px;
+      font-size: 13px; line-height: 1.7; color: var(--text);
+    }
+    .brief strong { color: var(--text); font-weight: 600; }
+    .brief .dim { color: var(--muted); }
+    .brief hr { border: none; border-top: 1px solid var(--border-soft); margin: 10px 0; }
+
+    /* Fade mask on brief content (revealed after signup) */
+    .brief-fade {
+      position: relative; overflow: hidden;
+    }
+    .brief-fade::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 80px;
+      background: linear-gradient(transparent, var(--surface-2));
+      transition: opacity 500ms ease;
+    }
+    .app.ws-mode .brief-fade::after { opacity: 0; }
+
+    .brief-more {
+      margin-top: 6px; font-size: 12.5px; color: var(--muted);
+      display: none;
+    }
+    .app.ws-mode .brief-more { display: block; }
+
+    /* ═══════════════════════════════════════
+       INPUT BAR
+    ═══════════════════════════════════════ */
+    #wsInputbar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 14px;
+      border-top: 1px solid var(--border-soft);
+      flex-shrink: 0; position: relative;
+    }
+
+    #wsInput {
+      flex: 1; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 13px;
+      font-size: 13px; color: var(--muted); font-family: var(--font);
+      min-height: 38px; transition: opacity 400ms ease;
+      pointer-events: none; user-select: none;
+    }
+    #wsInput.typing { color: var(--text); }
+
+    /* The morphing send/CTA button */
+    #wsMorphBtn {
+      position: relative; overflow: hidden; flex-shrink: 0;
+      width: 34px; height: 34px;
+      border-radius: 9px; border: none;
+      background: var(--text); color: var(--bg);
+      cursor: default;
+      transition:
+        width 900ms var(--ease-smooth),
+        border-radius 700ms var(--ease-smooth),
+        box-shadow 400ms ease;
+      font-family: var(--font);
+    }
+    #wsMorphBtn.active-cta { cursor: pointer; }
+    #wsMorphBtn.active-cta:hover { box-shadow: 0 0 0 3px rgba(255,255,255,0.15); }
+
+    #wsMorphBtn.morphed {
+      width: 196px;
+      border-radius: 20px;
+    }
+
+    .morph-icon {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; color: var(--bg);
+      transition: opacity 300ms ease;
+    }
+    .morph-text {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      white-space: nowrap; font-size: 12.5px; font-weight: 600;
+      color: var(--bg); opacity: 0;
+      transition: opacity 350ms ease 500ms;
+      letter-spacing: -0.01em;
+    }
+    #wsMorphBtn.morphed .morph-icon { opacity: 0; }
+    #wsMorphBtn.morphed .morph-text { opacity: 1; }
+
+    /* Input freezes when morphed */
+    #wsInputbar.frozen #wsInput { opacity: 0.35; }
+
+    /* ═══════════════════════════════════════
+       WORKSPACE SUGGESTIONS (post-signup)
+    ═══════════════════════════════════════ */
+    #wsSuggestions {
+      display: none; gap: 6px; flex-wrap: wrap;
+      padding: 0 14px 12px;
+    }
+    .app.ws-mode #wsSuggestions { display: flex; }
+    .suggestion {
+      font-size: 12px; color: var(--muted);
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 99px; padding: 4px 11px; cursor: pointer;
+      transition: background 150ms, color 150ms;
+    }
+    .suggestion:hover { background: var(--surface-3); color: var(--text); }
+
+    /* Post-signup: make input interactive */
+    .app.ws-mode #wsInput {
+      pointer-events: all;
+      opacity: 1;
+      color: var(--text);
+    }
+    .app.ws-mode #wsInput[contenteditable] { outline: none; }
+
+    /* ═══════════════════════════════════════
+       TRANSITION STATES
+    ═══════════════════════════════════════ */
+
+    /* .transitioning: signup fades, width changes */
+    .app.transitioning #signupView { opacity: 0; pointer-events: none; }
+
+    /* .ws-mode: sidebar visible, window full */
+    .app.ws-mode #leftPanel {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+    }
+    .app.ws-mode #rightPanel {
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+    .app.ws-mode #rightPanel::before { opacity: 0; }
+    .app.ws-mode #wsLabel { opacity: 0; max-height: 0; margin: 0; pointer-events: none; }
+    .app.ws-mode #wsWindow {
+      border-radius: 0;
+      border: none;
+      box-shadow: none;
+      max-width: 100%;
+      max-height: 100vh;
+    }
+    .app.ws-mode #sidebarView { opacity: 1; pointer-events: all; }
+    .app.ws-mode #signupView  { opacity: 0; pointer-events: none; }
+
+    /* Post-morph: swap button back to small send */
+    .app.ws-mode #wsMorphBtn {
+      width: 34px; border-radius: 9px;
+      transition: width 600ms var(--ease-smooth), border-radius 500ms ease;
+    }
+    .app.ws-mode #wsMorphBtn .morph-text { opacity: 0; transition: opacity 200ms ease; }
+    .app.ws-mode #wsMorphBtn .morph-icon { opacity: 1; transition: opacity 300ms ease 300ms; }
+    .app.ws-mode #wsInputbar { border-top-color: var(--border-soft); }
+
+    /* Post-ws: unfreeze input */
+    .app.ws-mode #wsInputbar.frozen #wsInput { opacity: 1; }
+
+    /* Workspace title bar changes to real app header */
+    .app.ws-mode .ws-titlebar {
+      padding-left: 16px;
+    }
+    .app.ws-mode .ws-dot { display: none; }
+    .app.ws-mode .ws-title {
+      text-align: left;
+      color: var(--muted);
+      font-size: 12.5px;
+      margin-left: 0;
+    }
+    .app.ws-mode .ws-title-spacer { display: none; }
+    .app.ws-mode .ws-title::before { content: '✦  '; font-size: 9px; color: var(--faint); }
+
+    /* Typewriter cursor */
+    .cursor { display: inline-block; width: 2px; height: 14px; background: var(--muted); vertical-align: middle; margin-left: 1px; animation: blink 1s step-end infinite; }
+  </style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ═══ LEFT ═══ -->
+  <aside id="leftPanel">
+
+    <!-- Signup view -->
+    <div id="signupView">
+      <div class="logo-row">
+        <svg class="logo-mark" width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2L3 7V12C3 16.97 7.02 21.61 12 22.93C16.98 21.61 21 16.97 21 12V7L12 2Z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M9 12L11.5 14.5L15.5 10" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="logo-name">Arcamatrix</span>
+      </div>
+
+      <div class="signup-main">
+        <h1 class="signup-headline">Your AI that<br>actually does<br>the work.</h1>
+        <p class="signup-sub">Free forever. No credit card.<br>25,000 tokens every day.</p>
+
+        <button class="btn-google">
+          <svg width="15" height="15" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Continue with Google
+        </button>
+
+        <div class="divider">or</div>
+
+        <label class="form-label" for="em">Email</label>
+        <input class="form-input" id="em" type="email" placeholder="you@example.com">
+        <button class="btn-primary" id="signupBtn">Start Free →</button>
+
+        <div class="trust-row">
+          <span class="trust-chip"><span class="live"></span>Free forever</span>
+          <span class="trust-chip">25K tokens/day</span>
+          <span class="trust-chip">GDPR · EU</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="login-hint">Already have an account? <a href="#">Log in</a></div>
+        <div class="signup-footer">
+          By continuing you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
+        </div>
+      </div>
+    </div><!-- /signupView -->
+
+    <!-- Sidebar view (appears after transition) -->
+    <div id="sidebarView">
+      <div class="sb-logo">
+        <div class="sb-logo-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L3 7V12C3 16.97 7.02 21.61 12 22.93C16.98 21.61 21 16.97 21 12V7L12 2Z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M9 12L11.5 14.5L15.5 10" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="sb-logo-text">
+          <div class="sb-logo-name">Arcamatrix</div>
+          <div class="sb-logo-ws">My Workspace</div>
+        </div>
+      </div>
+
+      <div class="sb-nav">
+        <div class="sb-item active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Chat
+        </div>
+        <div class="sb-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.04Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.04Z"/></svg>
+          Brain
+          <span class="chevron">›</span>
+        </div>
+        <div class="sb-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Tasks
+        </div>
+        <div class="sb-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Files
+        </div>
+        <div class="sb-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          Settings
+          <span class="chevron">›</span>
+        </div>
+
+        <div class="sb-section-label">Channels</div>
+
+        <div class="sb-channel">
+          <div class="sb-channel-icon" style="background:#25D366">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.17.578 4.2 1.586 5.951L0 24l6.262-1.567A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.817 9.817 0 0 1-5.001-1.369l-.36-.214-3.717.93.972-3.618-.234-.371A9.818 9.818 0 1 1 12 21.818z" fill="white"/></svg>
+          </div>
+          Continue on WhatsApp
+        </div>
+
+        <div class="sb-channel">
+          <div class="sb-channel-icon" style="background:#229ED9">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="white"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.96 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+          </div>
+          Continue on Telegram
+        </div>
+      </div>
+
+      <div class="sb-bottom">
+        <div class="sb-feedback">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Leave feedback
+        </div>
+      </div>
+    </div><!-- /sidebarView -->
+
+  </aside><!-- /leftPanel -->
+
+  <!-- ═══ RIGHT ═══ -->
+  <main id="rightPanel">
+    <div id="wsLabel">ARCAMATRIX WORKSPACE</div>
+
+    <div id="wsWindow">
+      <!-- Title bar -->
+      <div class="ws-titlebar">
+        <div class="ws-dot"></div>
+        <div class="ws-dot"></div>
+        <div class="ws-dot"></div>
+        <div class="ws-title" id="wsTitle">workspace · arcamatrix.com</div>
+        <div class="ws-title-spacer"></div>
+      </div>
+
+      <!-- Chat -->
+      <div id="wsChat"></div>
+
+      <!-- Suggestions (post-signup) -->
+      <div id="wsSuggestions">
+        <span class="suggestion">Help me plan my week</span>
+        <span class="suggestion">Draft a reply to my boss</span>
+        <span class="suggestion">Research this topic for me</span>
+        <span class="suggestion" style="cursor:pointer;color:var(--faint);background:none;border-color:transparent">✕</span>
+      </div>
+
+      <!-- Input bar -->
+      <div id="wsInputbar">
+        <div id="wsInput">Ask anything or give a task...</div>
+        <button id="wsMorphBtn">
+          <span class="morph-icon">↑</span>
+          <span class="morph-text">Sign up for free →</span>
+        </button>
+      </div>
+    </div>
+  </main>
+
+</div><!-- /app -->
+
+<script>
+(function() {
+  const app      = document.getElementById('app');
+  const chat     = document.getElementById('wsChat');
+  const inputEl  = document.getElementById('wsInput');
+  const inputbar = document.getElementById('wsInputbar');
+  const morphBtn = document.getElementById('wsMorphBtn');
+  const wsTitle  = document.getElementById('wsTitle');
+
+  // ── Demo conversation data ──────────────────────────────
+  const DEMO = [
+    {
+      delay: 700,
+      role: 'you',
+      text: 'I have a client meeting tomorrow morning. Help me prepare.'
+    },
+    {
+      delay: 1500,
+      role: 'ai',
+      type: 'status',
+      text: 'Searching your recent emails and calendar...'
+    },
+    {
+      delay: 2600,
+      role: 'ai',
+      type: 'pills',
+      items: ['📧 Email', '📅 Calendar', '🌐 Web search']
+    },
+    {
+      delay: 3400,
+      role: 'ai',
+      type: 'brief',
+      name: 'Arcamatrix',
+      preamble: 'Found it. Here\'s your meeting brief:',
+      content: [
+        { t: 'b', v: 'Client:' },  { t: 't', v: ' Nexus Digital — contract renewal, expires May 15th.' },
+        { t: 'b', v: '\nLast contact:' }, { t: 't', v: ' You emailed Sarah on Mar 28 about pricing.' },
+        { t: 'hr' },
+        { t: 'b', v: 'Agenda I drafted:\n' },
+        { t: 't', v: '1. Review this year\'s results\n' },
+        { t: 't', v: '2. Address their Salesforce concern (fix found)\n' },
+        { t: 't', v: '3. Present renewal options\n' },
+        { t: 'hr' },
+        { t: 'b', v: 'Key talking points:\n' },
+        { t: 't', v: '• Revenue grew 34% since they onboarded\n' },
+        { t: 't', v: '• The Salesforce issue can be solved via native API...' }
+      ],
+      more: '\u2022 Renewal recommendation: Growth+ plan at $890/mo\n\u2022 Opening line suggestion ready \u2014 just ask'
+    }
+  ];
+
+  // ── Render a message ────────────────────────────────────
+  function addMsg(cfg) {
+    const el = document.createElement('div');
+    el.className = 'msg ' + (cfg.role || 'ai');
+
+    const av = document.createElement('div');
+    av.className = 'msg-av ' + (cfg.role === 'you' ? 'you' : 'ai');
+    av.textContent = cfg.role === 'you' ? 'Y' : 'A';
+    el.appendChild(av);
+
+    const body = document.createElement('div');
+    body.className = 'msg-body';
+
+    if (cfg.role !== 'you') {
+      const name = document.createElement('div');
+      name.className = 'msg-name';
+      name.textContent = cfg.name || 'Arcamatrix';
+      body.appendChild(name);
+    }
+
+    if (cfg.type === 'status') {
+      const s = document.createElement('div');
+      s.className = 'msg-status';
+      s.innerHTML = '<span class="status-pulse"></span>' + cfg.text;
+      body.appendChild(s);
+    } else if (cfg.type === 'pills') {
+      const p = document.createElement('div');
+      p.className = 'pills';
+      cfg.items.forEach(i => {
+        const pill = document.createElement('span');
+        pill.className = 'pill';
+        pill.textContent = i;
+        p.appendChild(pill);
+      });
+      body.appendChild(p);
+    } else if (cfg.type === 'brief') {
+      const preamble = document.createElement('div');
+      preamble.className = 'msg-bubble';
+      preamble.style.marginBottom = '2px';
+      preamble.textContent = cfg.preamble;
+      body.appendChild(preamble);
+
+      const brief = document.createElement('div');
+      brief.className = 'brief brief-fade';
+
+      const more = document.createElement('div');
+      more.className = 'brief-more';
+      more.style.whiteSpace = 'pre-line';
+      more.textContent = cfg.more;
+
+      // We'll type into the brief
+      el.appendChild(av.cloneNode(true));
+      el.innerHTML = '';
+      el.appendChild(av);
+      el.appendChild(body);
+      body.appendChild(preamble);
+      body.appendChild(brief);
+      brief.appendChild(more);
+
+      chat.appendChild(el);
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+      chat.scrollTop = chat.scrollHeight;
+
+      // Type brief content char by char
+      typeBrief(brief, more, cfg.content);
+      return; // early return
+    } else {
+      const bubble = document.createElement('div');
+      bubble.className = 'msg-bubble';
+      bubble.textContent = cfg.text;
+      body.appendChild(bubble);
+    }
+
+    el.appendChild(body);
+    chat.appendChild(el);
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function typeBrief(container, moreEl, chunks) {
+    let ci = 0, charIdx = 0;
+    const cursor = document.createElement('span');
+    cursor.className = 'cursor';
+    container.appendChild(cursor);
+
+    const totalChars = chunks.reduce((a, c) => a + (c.v ? c.v.length : 0), 0);
+    let typed = 0;
+
+    function tick() {
+      if (ci >= chunks.length) {
+        cursor.remove();
+        // After brief is complete, trigger morph with a delay
+        setTimeout(triggerMorph, 1400);
+        return;
+      }
+      const chunk = chunks[ci];
+      if (chunk.t === 'hr') {
+        const hr = document.createElement('hr');
+        container.insertBefore(hr, cursor);
+        ci++;
+        setTimeout(tick, 60);
+        return;
+      }
+      const text = chunk.v;
+      if (charIdx < text.length) {
+        // Find or create span for this chunk
+        let span = container.querySelector('[data-ci="' + ci + '"]');
+        if (!span) {
+          span = document.createElement(chunk.t === 'b' ? 'strong' : 'span');
+          if (chunk.t !== 'b') span.className = 'dim';
+          span.dataset.ci = ci;
+          span.style.whiteSpace = 'pre-line';
+          container.insertBefore(span, cursor);
+        }
+        span.textContent += text[charIdx];
+        charIdx++;
+        typed++;
+        chat.scrollTop = chat.scrollHeight;
+        // Speed: faster at start, steady mid
+        const speed = typed < 20 ? 18 : typed < 80 ? 12 : 8;
+        setTimeout(tick, speed);
+      } else {
+        ci++;
+        charIdx = 0;
+        setTimeout(tick, 10);
+      }
+    }
+    setTimeout(tick, 200);
+  }
+
+  // ── Play demo sequence ──────────────────────────────────
+  let seqTimeout = null;
+  let playing = false;
+
+  function playDemo() {
+    playing = true;
+    DEMO.forEach((cfg, i) => {
+      seqTimeout = setTimeout(() => addMsg(cfg), cfg.delay);
+    });
+  }
+
+  // Typewriter in input field
+  const prompts = [
+    'I have a client meeting tomorrow. Help me prepare.',
+    'Research our top 3 competitors and summarize',
+    'Write a follow-up email to Sarah at Nexus',
+    'Schedule my week and clear my backlog',
+    'Post the draft article to LinkedIn',
+  ];
+  let pi = 0, ci2 = 0, typing2 = true;
+
+  function typeInput() {
+    const target = prompts[pi];
+    if (typing2) {
+      if (ci2 < target.length) {
+        inputEl.textContent = target.slice(0, ci2 + 1);
+        inputEl.classList.add('typing');
+        ci2++;
+        setTimeout(typeInput, 52);
+      } else {
+        typing2 = false;
+        setTimeout(typeInput, 2600);
+      }
+    } else {
+      if (ci2 > 0) {
+        inputEl.textContent = target.slice(0, ci2 - 1);
+        ci2--;
+        setTimeout(typeInput, 28);
+      } else {
+        pi = (pi + 1) % prompts.length;
+        inputEl.classList.remove('typing');
+        typing2 = true;
+        setTimeout(typeInput, 350);
+      }
+    }
+  }
+
+  // Delay typewriter until after demo starts to avoid fighting with demo
+  // (demo uses a different timing track)
+  // After the brief is done and morph triggers, we stop typewriter
+  let inputTyping = true;
+
+  // ── Morph trigger ──────────────────────────────────────
+  function triggerMorph() {
+    inputTyping = false;
+    // Freeze input
+    inputbar.classList.add('frozen');
+    inputEl.textContent = 'Continue this conversation...';
+    inputEl.classList.remove('typing');
+
+    // Start morph: slight delay, then grow
+    setTimeout(() => {
+      morphBtn.classList.add('morphed');
+      morphBtn.classList.add('active-cta');
+    }, 300);
+  }
+
+  // ── Transition to workspace ────────────────────────────
+  morphBtn.addEventListener('click', function() {
+    if (!morphBtn.classList.contains('active-cta')) return;
+    doTransition();
+  });
+
+  // Also allow signup btn to trigger same
+  document.getElementById('signupBtn').addEventListener('click', doTransition);
+
+  function doTransition() {
+    // Phase 1: signup fades
+    app.classList.add('transitioning');
+
+    setTimeout(() => {
+      // Phase 2: width shrinks, window expands
+      app.classList.add('ws-mode');
+      wsTitle.textContent = 'Chat · Arcamatrix';
+
+      // Make input editable post-transition
+      setTimeout(() => {
+        inputbar.classList.remove('frozen');
+        inputEl.textContent = '';
+        inputEl.setAttribute('contenteditable', 'true');
+        inputEl.setAttribute('placeholder', 'Continue the conversation...');
+      }, 800);
+    }, 380);
+  }
+
+  // ── Boot ───────────────────────────────────────────────
+  setTimeout(playDemo, 400);
+  setTimeout(typeInput, 2800); // start typewriter after first user message
+
+  // Send on Enter in post-signup input (demo only)
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && inputEl.getAttribute('contenteditable')) {
+      e.preventDefault();
+      const txt = inputEl.textContent.trim();
+      if (!txt) return;
+      inputEl.textContent = '';
+      // Add user message
+      chat.scrollTop = chat.scrollHeight;
+      const el = document.createElement('div');
+      el.className = 'msg you show';
+      el.innerHTML = '<div class="msg-av you">Y</div><div class="msg-body"><div class="msg-bubble">' + txt + '</div></div>';
+      chat.appendChild(el);
+      chat.scrollTop = chat.scrollHeight;
+
+      // Simulated AI reply
+      setTimeout(() => {
+        const reply = document.createElement('div');
+        reply.className = 'msg ai';
+        const name = document.createElement('div');
+        name.className = 'msg-name'; name.textContent = 'Arcamatrix';
+        const bubble = document.createElement('div');
+        bubble.className = 'msg-bubble';
+        bubble.textContent = 'On it — give me a moment...';
+        const av = document.createElement('div');
+        av.className = 'msg-av ai'; av.textContent = 'A';
+        const body = document.createElement('div');
+        body.className = 'msg-body';
+        body.appendChild(name); body.appendChild(bubble);
+        reply.appendChild(av); reply.appendChild(body);
+        chat.appendChild(reply);
+        requestAnimationFrame(() => requestAnimationFrame(() => reply.classList.add('show')));
+        chat.scrollTop = chat.scrollHeight;
+      }, 900);
+    }
+  });
+
+  // Suggestion clicks post-signup
+  document.querySelectorAll('.suggestion').forEach(s => {
+    s.addEventListener('click', function() {
+      if (!app.classList.contains('ws-mode')) return;
+      if (this.textContent === '✕') {
+        document.getElementById('wsSuggestions').style.display = 'none';
+        return;
+      }
+      inputEl.textContent = this.textContent;
+      inputEl.focus();
+    });
+  });
+
+})();
+</script>
+</body>
+</html>
