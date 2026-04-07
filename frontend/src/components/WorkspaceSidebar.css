@@ -1,0 +1,250 @@
+.sidebar-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 450ms ease 400ms;
+  background: var(--bg);
+  width: var(--sidebar-w);
+}
+
+.sidebar-view.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.sb-logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 16px 20px;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 8px;
+}
+
+.sb-logo-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sb-logo-text {
+  line-height: 1.2;
+}
+
+.sb-logo-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sb-logo-ws {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.sb-session-card {
+  margin: 0 16px 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
+    var(--surface);
+}
+
+.sb-dev-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.22);
+  color: #fde68a;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.sb-session-label {
+  font-size: 11.5px;
+  color: var(--text);
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+
+.sb-session-copy {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.sb-nav {
+  flex: 1;
+  padding: 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+}
+
+.sb-nav::-webkit-scrollbar {
+  width: 3px;
+}
+
+.sb-nav::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 999px;
+}
+
+.sb-item,
+.sb-channel,
+.sb-feedback {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.sb-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 150ms, color 150ms, border-color 150ms;
+  text-align: left;
+}
+
+.sb-item:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.sb-item.active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.sb-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.sb-item-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.sb-item-label {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.sb-item-meta {
+  font-size: 10px;
+  color: var(--faint);
+  line-height: 1.4;
+}
+
+.sb-item.active .sb-item-meta,
+.sb-item:hover .sb-item-meta {
+  color: var(--muted);
+}
+
+.sb-item-chevron {
+  color: var(--faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.sb-section-label {
+  padding: 14px 10px 6px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.sb-channel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+  text-align: left;
+}
+
+.sb-channel:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.sb-channel-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sb-channel-icon.whatsapp {
+  background: #25d366;
+}
+
+.sb-channel-icon.telegram {
+  background: #229ed9;
+}
+
+.sb-bottom {
+  padding: 8px 10px 0;
+  border-top: 1px solid var(--border-soft);
+  margin-top: 8px;
+}
+
+.sb-feedback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  color: var(--faint);
+  cursor: pointer;
+  transition: color 150ms, background 150ms;
+  text-align: left;
+}
+
+.sb-feedback:hover {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.02);
+}

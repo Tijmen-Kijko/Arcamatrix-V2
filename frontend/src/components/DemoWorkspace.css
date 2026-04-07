@@ -208,12 +208,24 @@
   border-radius: 8px;
   padding: 9px 13px;
   font-size: 13px;
-  color: var(--muted);
+  color: var(--text);
   font-family: var(--font);
   min-height: 38px;
   transition: opacity 400ms ease;
-  pointer-events: none;
-  user-select: none;
+  outline: none;
+}
+
+.ws-input::placeholder {
+  color: var(--muted);
+}
+
+.ws-input:focus {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.ws-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* MorphButton styles moved to MorphButton.css (F-06) */

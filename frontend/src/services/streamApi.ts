@@ -37,6 +37,18 @@ export async function createDemoSession(): Promise<DemoSessionResponse> {
   return readJson<DemoSessionResponse>(response);
 }
 
+export async function sendMessage(sessionId: string, text: string): Promise<void> {
+  const response = await fetch(`/api/stream/${encodeURIComponent(sessionId)}/message`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Send failed with status ${response.status}.`);
+  }
+}
+
 export async function getTokenStatus(query: {
   sessionId?: string;
   userId?: string;

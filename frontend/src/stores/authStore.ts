@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import {
+  createDevAuthSession,
   peekMagicLinkToken,
   postAuthEmailStart,
   postAuthEmailVerify,
@@ -20,6 +21,8 @@ interface AuthState {
   session: AuthSuccessResponse | null;
   pendingEmail: string | null;
   pendingMagicLinkToken: string | null;
+  isDevBypass: boolean;
+  bootstrapDevBypass: (emailHint?: string) => AuthSuccessResponse;
   signInWithGoogle: (emailHint?: string) => Promise<AuthSuccessResponse>;
   startMagicLink: (email: string) => Promise<void>;
   verifyMagicLink: () => Promise<AuthSuccessResponse>;
@@ -27,13 +30,86 @@ interface AuthState {
 }
 
 const GOOGLE_DEMO_EMAIL = 'founder@arcamatrix.ai';
+const DEV_BYPASS_STORAGE_KEY = 'arcamatrix.dev-auth-session';
+const DEV_AUTH_BYPASS_ENABLED =
+  import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS !== 'false';
+
+function canUseStorage() {
+  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+}
+
+function readStoredDevSession() {
+  if (!DEV_AUTH_BYPASS_ENABLED) {
+    return null;
+  }
+
+  if (!canUseStorage()) {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(DEV_BYPASS_STORAGE_KEY);
+
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as AuthSuccessResponse;
+  } catch {
+    window.localStorage.removeItem(DEV_BYPASS_STORAGE_KEY);
+    return null;
+  }
+}
+
+function persistDevSession(session: AuthSuccessResponse) {
+  if (!DEV_AUTH_BYPASS_ENABLED) {
+    return;
+  }
+
+  if (!canUseStorage()) {
+    return;
+  }
+
+  window.localStorage.setItem(DEV_BYPASS_STORAGE_KEY, JSON.stringify(session));
+}
+
+function clearStoredDevSession() {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  window.localStorage.removeItem(DEV_BYPASS_STORAGE_KEY);
+}
+
+const storedDevSession = readStoredDevSession();
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  status: 'idle',
+  status: storedDevSession ? 'authenticated' : 'idle',
   error: null,
-  session: null,
+  session: storedDevSession,
   pendingEmail: null,
   pendingMagicLinkToken: null,
+  isDevBypass: Boolean(storedDevSession),
+
+  bootstrapDevBypass: (emailHint) => {
+    if (!DEV_AUTH_BYPASS_ENABLED) {
+      throw new Error('Dev auth bypass is disabled for this environment.');
+    }
+
+    const session = createDevAuthSession({ email: emailHint });
+    persistDevSession(session);
+
+    set({
+      status: 'authenticated',
+      error: null,
+      session,
+      pendingEmail: null,
+      pendingMagicLinkToken: null,
+      isDevBypass: true,
+    });
+
+    return session;
+  },
 
   signInWithGoogle: async (emailHint) => {
     set({ status: 'submitting', error: null });
@@ -43,12 +119,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         id_token: emailHint?.trim() || GOOGLE_DEMO_EMAIL,
       });
 
+      clearStoredDevSession();
+
       set({
         status: 'authenticated',
         error: null,
         session,
         pendingEmail: null,
         pendingMagicLinkToken: null,
+        isDevBypass: false,
       });
 
       return session;
@@ -96,12 +175,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const session = await postAuthEmailVerify({ token });
 
+      clearStoredDevSession();
+
       set({
         status: 'authenticated',
         error: null,
         session,
         pendingEmail: null,
         pendingMagicLinkToken: null,
+        isDevBypass: false,
       });
 
       return session;
@@ -120,6 +202,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       error: null,
       pendingEmail: null,
       pendingMagicLinkToken: null,
+      isDevBypass: false,
     });
   },
 }));

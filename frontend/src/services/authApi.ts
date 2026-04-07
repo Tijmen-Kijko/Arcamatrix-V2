@@ -128,6 +128,21 @@ const parseMockGoogleToken = (idToken: string) => {
   return `${normalized}@gmail.com`;
 };
 
+export interface DevAuthSessionOptions {
+  email?: string;
+  provider?: AuthProvider;
+}
+
+export function createDevAuthSession(
+  options: DevAuthSessionOptions = {},
+): AuthSuccessResponse {
+  const provider = options.provider ?? 'google';
+  const email = parseMockGoogleToken(options.email ?? 'builder@arcamatrix.ai');
+  const { record, isNewUser } = upsertUser(email, provider);
+
+  return toAuthResponse(record, isNewUser);
+}
+
 // Frontend stub for B-01 until the Mastra/Node backend exists in this workspace.
 export async function postAuthGoogle(
   body: GoogleAuthRequest,

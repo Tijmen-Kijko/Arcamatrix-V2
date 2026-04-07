@@ -144,27 +144,9 @@ export function SignupPanel({ onSignup, onVerifyMagicLink }: SignupPanelProps) {
         </form>
 
         <div>
-<div className="signup-footer">
+          <div className="signup-footer">
             By continuing you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
           </div>
-        </div>
-      </div>
-
-      <div className={`sidebar-view ${phase === 'workspace' ? 'visible' : ''}`}>
-        {authSession && (
-          <div className="sb-session-card">
-            <div className="sb-session-label">{authSession.user.email}</div>
-            <div className="sb-session-copy">
-              Signed in via {authSession.user.auth_provider}
-            </div>
-          </div>
-        )}
-        <div className="sb-nav">
-          <div className="sb-item active">Chat</div>
-          <div className="sb-item">Brain</div>
-          <div className="sb-item">Tasks</div>
-          <div className="sb-item">Files</div>
-          <div className="sb-item">Settings</div>
         </div>
       </div>
     </>

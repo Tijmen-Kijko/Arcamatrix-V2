@@ -1,10 +1,10 @@
-# Arcamatrix — Phase 1 Development Plan
+# Arcamatrix — Masterplan
 **Landing page · Free account onboarding · Brain modules · Visitor Sandbox**
 *Stack: React · Mastra (TypeScript) · Hermes Agent (Python) | Bijgewerkt: 7 april 2026*
 
 ---
 
-## Doel van Phase 1
+## Doel
 
 Één duidelijk resultaat: een nieuwe bezoeker landt op de site en heeft **binnen 30 seconden een werkende AI-workspace** — zonder login, zonder uitleg vooraf. De bezoeker krijgt meteen een echte sandbox-omgeving. De demo *is* het product. Bij signup wordt de sandbox naadloos gepromoveerd naar een permanent account.
 
@@ -174,6 +174,16 @@ Sandboxes slaan geen persoonsgegevens op (anoniem). Bij promote: expliciete toes
 | 14 | Memory-extractie: automatisch na sessie of opt-in? | 🔲 Open | — |
 | 15 | Skills-registry: eigen hosted of Hermes community? | 🔲 Open | — |
 | 16 | Sandbox promote-flow UI: modal, inline of aparte pagina? | 🔲 Open | — |
+
+### Brain-specifieke beslissingen
+
+| # | Vraag | Impact |
+|---|-------|--------|
+| B1 | Skills-registry: eigen hosted of Hermes community-registry? | Skills-tab backend |
+| B2 | Knowledge-embeddings: lokaal (FAISS) of hosted (Pinecone/Weaviate)? | Kosten + latency |
+| B3 | Memory-extractie: na elke sessie automatisch of opt-in? | Privacy + UX |
+| B4 | Connector-tokens: encrypted in Mastra DB of in Hermes workspace? | Security-architectuur |
+| B5 | Custom skills: public by default of private-first? | Marketplace-beleid |
 
 ---
 
@@ -547,11 +557,9 @@ GET /stream/:session_id
 
 ### B-05 · Token teller + rate limiting (Mastra)
 **Week:** 2-3 | **Afhankelijk van:** B-01, B-03
-**Status:** â— Lokale budgetstub live; productie wacht nog op echte Mastra middleware.
+**Status:** ◐ Lokale budgetstub live; productie wacht nog op echte Mastra middleware.
 
 **Update 7 april 2026:** In deze workspace is `B-05` lokaal opgeleverd bovenop de bestaande Vite/SSE-stub. Toegevoegd: `GET /api/tokens/status`, een sandboxbudget van `5.000` tokens per sessie, een gratis tier van `25.000` tokens per dag met reset om `00:00 UTC`, preflight-budgetchecks voor de stream, `429` responses zodra een uitgeput budget opnieuw probeert te streamen, en een `budget_exhausted` SSE-event dat tijdens een lopende stream direct een upgrade-prompt toont. De BudgetBar leest nu ook `tier`, `resets_at` en exhaustion-state uit. De productievariant blijft nog afhankelijk van echte Mastra `/agent/*` middleware en Hermes-runtime; daarvoor blijven `B-03` en de ontbrekende backend in deze workspace leidend.
-
-**Status note:** Partial - lokale budgetstub live; productie wacht nog op echte Mastra middleware.
 
 ```
 Sandbox:  5.000 tokens eenmalig, geen reset
@@ -622,186 +630,317 @@ hermes gateway start
 
 ---
 
-## Brain-modules (Sidebar > Brain)
+## Brain-modules — Gedetailleerd
 
-De Brain-sectie heeft drie modules: **Tools**, **Knowledge**, **Memory**.
+De **Brain**-sectie is het configuratiehart van de Arcamatrix workspace. Het bestaat uit drie modules:
+
+| Module | UI-label | Wat het doet | Hermes-mapping |
+|--------|----------|--------------|----------------|
+| **Tools** | Brain > Tools | Connectors (externe services) + Skills (procedurele kennis) beheren | `hermes tools`, `hermes skills` |
+| **Knowledge** | Brain > Knowledge | Identity (agent-persona), Soul, User-profiel, + kennisbestanden uploaden | `IDENTITY.md`, `USER.md`, knowledge files |
+| **Memory** | Brain > Memory | Persistent factual memory en sessie-context per workspace | `MEMORY.md`, session store |
 
 ---
 
-### Tools (Brain > Tools)
+### Module 1 · Tools (Brain > Integrations)
 
-Twee tabs: **Connectors** en **Skills**.
+#### 1.1 Connectors-tab
 
-#### Connectors-tab
+Connectors zijn **OAuth/API-koppelingen** naar externe services die Hermes namens de gebruiker kan aansturen.
 
-Connectors zijn OAuth/API-koppelingen naar externe services.
+**Wat de gebruiker ziet:**
+- **Always Active**: Base44 Backend — database, functions, file storage, automations (ingebouwd, niet verwijderbaar)
+- **Connected (N)**: actief verbonden connectors met groen label
+- **Available**: 41+ connectors: Stripe, Gmail, Google Calendar, Google Sheets, Google Drive, LinkedIn, Google Analytics, Google Docs, Outlook, GitHub, Slack Bot, Notion, HubSpot, + 32 meer
 
-**Altijd actief**: Base44 Backend (database, functions, file storage, automations).
+**Fase A — Read-only connectoren (MVP)**
+- OAuth-flow per provider (Google-family, GitHub, Outlook)
+- Token-opslag encrypted per user in Mastra (`/credentials/{user_id}/{provider}`)
+- Hermes ontvangt read-only access token via context-inject bij elke agent-run
+- UI: connector card met `Connect` button → OAuth popup → succes-state met "Connected" badge
+- Scope: enkel lezen (calendar events, emails, sheets data, drive files)
 
-**Beschikbare connectors (41+)**: Stripe, Gmail, Google Calendar, Google Sheets, Google Drive, LinkedIn, Google Analytics, Google Docs, Outlook, GitHub, Slack Bot, Notion, HubSpot, + 32 meer.
+**Fase B — Actieve connectors**
+- Write-scope toevoegen (Gmail sturen, Calendar event aanmaken, Sheet schrijven)
+- Hermes tool-definitie per connector: `gmail_send`, `calendar_create`, `sheets_append`
+- Rate-limit en permission-check in Mastra middleware voordat Hermes de tool uitvoert
+- UI: connector card toont "Read only" of "Full access" badge, instelbaar per connector
 
-**Fasering:**
+**Fase C — Custom connectors**
+- Gebruiker kan eigen REST-API toevoegen via OpenAPI spec upload of handmatige endpoint-definitie
+- Hermes genereert automatisch tool-definitie op basis van spec
+- UI: `+ Add custom connector` flow met naam, base URL, auth-type (Bearer, API key, OAuth)
 
-| Fase | Deliverable |
-|------|-------------|
-| **A (MVP)** | Read-only OAuth: Google Calendar, Gmail, GitHub, Outlook |
-| **B** | Write-scope: Gmail sturen, Sheets schrijven, Calendar aanmaken |
-| **C** | Custom connectors via OpenAPI spec upload |
-
-**Backend-endpoints:**
+**Backend-taken (Mastra + Hermes):**
 
 ```
 POST /connectors/oauth/start
   body: { provider, scopes[] }
+  → genereert OAuth URL, slaat state op
   → return: { auth_url }
 
 POST /connectors/oauth/callback
   body: { provider, code, state }
-  → encrypted token opslaan per user
-  → return: { connected: true, scopes[] }
+  → wisselt code voor tokens
+  → slaat encrypted tokens op per user
+  → return: { connected: true, provider, scopes[] }
 
-GET  /connectors/status
+GET /connectors/status
+  → return: { connected: [{ provider, scopes, connected_at }] }
+
 DELETE /connectors/{provider}
-```
+  → revoke + verwijder tokens
 
-Hermes injecteert tokens als tool-context bij elke agent-run.
+Hermes: bij agent-run context-inject:
+  → laadt actieve connectors voor user
+  → injecteert tokens als tool-context
+  → Hermes kan `use_tool("gmail_read", {...})` aanroepen
+```
 
 ---
 
-#### Skills-tab
+#### 1.2 Skills-tab
 
-Skills zijn procedurele kennisblokken (`.md`-bestanden) die Hermes vertellen hoe het een taak uitvoert.
+Skills zijn **procedurele kennisblokken** die Hermes vertellen hoe het een taak uitvoert — niet *wat* het weet (dat is Knowledge/Memory) maar *hoe* het handelt.
 
-**Huidig**: 166 skills beschikbaar, doorzoekbaar. Publisher-badge (bv. `anthropics`). Voorbeelden: `skill-creator`, `pdf`, `pptx`, `docx`, `xlsx`.
+**Wat de gebruiker ziet:**
+- **Browse**: 166 skills beschikbaar, doorzoekbaar
+- Skills hebben naam, beschrijving, gebruikersaantal, en publisher (bv. `anthropics`)
+- Voorbeelden: `skill-creator`, `pdf`, `pptx`, `docx`, `xlsx`
+- Elke skill heeft een `+ Add` knop
 
-**Hoe het werkt in Hermes:**
+**Hoe Skills werken in Hermes:**
+Skills in Hermes zijn Markdown-bestanden (`.md`) met gestructureerde instructies. Ze worden tijdens een agent-run dynamisch geladen als de agent bepaalt dat een skill relevant is. Het skills-systeem is **zelfverbeterend**: Hermes kan bestaande skills aanpassen op basis van outcome feedback.
+
 ```
 /hermes-data/{user_id}/skills/
   pdf.md
   xlsx.md
-  custom-naam.md
+  custom-skill-name.md
 ```
-Skills worden dynamisch geladen als de agent bepaalt dat ze relevant zijn. Het systeem is zelfverbeterend: Hermes kan skills aanpassen op basis van outcome feedback.
 
-**Fasering:**
+**Fase A — Skill library browsen + installeren (MVP)**
+- Skills-registry endpoint: `GET /skills/browse?q=&category=&page=`
+- Skill installeren: kopieert `.md` naar user's Hermes workspace (`/hermes-data/{user_id}/skills/`)
+- UI: zoekbalk, skill-cards met naam + beschrijving + gebruikersaantal + publisher-badge
+- Geïnstalleerde skills krijgen checkmark; `+ Add` → `✓ Installed`
+- Maximaal 20 skills actief tegelijk (configureerbaar)
 
-| Fase | Deliverable |
-|------|-------------|
-| **A (MVP)** | Browse + installeren: skills-registry endpoint + install-flow |
-| **B** | Management: versies, toggle, gebruik-statistieken |
-| **C** | Custom skills: Markdown-editor + `skill-creator` integratie |
-| **D** | Marketplace: publiceren, ratings, private libraries voor orgs |
+**Fase B — Skill management**
+- Overzicht van geïnstalleerde skills per workspace
+- Skill deactiveren zonder verwijderen (toggle)
+- Skill-versies: update-notificatie als publisher nieuwe versie uitbrengt
+- Skill-gebruik statistieken: "used 12 times this week"
 
-**Backend-endpoints:**
+**Fase C — Custom skills aanmaken**
+- UI: `+ New skill` → naam + beschrijving + Markdown-editor
+- `skill-creator` skill inzetten: gebruiker beschrijft gewenst gedrag, Hermes genereert skill-inhoud
+- Skills kunnen andere skills importeren (`import: pdf`)
+- Skill-review flow: test skill in sandbox voor activatie
+
+**Fase D — Skills marketplace**
+- Gebruikers kunnen eigen skills publiceren (review-proces)
+- Skill-ratings en reviews
+- Organisaties kunnen private skill-libraries aanleggen
+
+**Backend-taken:**
 
 ```
-GET  /skills/browse?q=&category=&page=
-POST /skills/install     body: { skill_id }
+GET /skills/browse
+  params: { q, category, sort, page }
+  → return: { skills: [{ id, name, description, users, publisher, version }] }
+
+POST /skills/install
+  body: { skill_id }
+  → kopieert skill-definitie naar user's Hermes workspace
+  → return: { installed: true, skill_id }
+
 DELETE /skills/{skill_id}
-GET  /skills/installed
-PATCH /skills/{skill_id} body: { active: bool }
+  → verwijdert skill uit user's workspace
+
+GET /skills/installed
+  → return: { skills: [{ id, name, active, last_used, use_count }] }
+
+PATCH /skills/{skill_id}
+  body: { active: bool }
+  → toggle activatie
 ```
 
 ---
 
-### Knowledge (Brain > Knowledge)
+### Module 2 · Knowledge (Brain > Knowledge)
 
-Knowledge beheert **wie de agent is** en **wat de agent weet**. Drie sub-secties.
+Knowledge beheert **wie de agent is** en **wat de agent weet**.
 
-#### Identity + Soul
+#### 2.1 Identity — Agent-persona
 
-`IDENTITY.md` is het primaire systeem-prompt-fragment. Geladen als eerste context bij elke Hermes-run.
+**Wat de gebruiker ziet:**
+- Identity card met naam (Tymos), avatar, beschrijving ("AI agent — warm, sharp, casual")
+- Bewerkbaar via `Edit` knop
+- Toont de raw `IDENTITY.md` inhoud (inklapbaar)
 
-**Identity velden**: naam, avatar, persoonlijkheidsbeschrijving, toon.
-**Soul**: gedragsregels en waarden — los van specifieke taken.
+**Hoe het werkt:**
+`IDENTITY.md` is het primaire systeem-prompt-fragment. Het wordt bij elke Hermes-run als eerste context geladen. Hermes injecteert dit vóór user-berichten in de prompt-keten.
 
-**Fasering:**
+**Fase A — Identity weergeven + bewerken (MVP)**
+- UI: identity card met naam, avatar-upload, bio-tekst
+- `Edit` → modal met velden: naam, persoonlijkheidsbeschrijving, toon (warm/formeel/casual), specialisaties
+- Mastra slaat op als `IDENTITY.md` in Hermes workspace
+- Preview: "Raw IDENTITY.md" toggle toont gegenereerde Markdown
 
-| Fase | Deliverable |
-|------|-------------|
-| **A (MVP)** | Bewerken + opslaan IDENTITY.md / SOUL.md via UI |
-| **B** | Persona-templates (Personal Assistant, Research Agent, Code Agent) |
-| **C** | Meerdere persona's per workspace |
+**Fase B — Persona-templates**
+- Keuze uit voorgebouwde persona-starters: Personal Assistant, Research Agent, Code Agent, Sales Agent
+- Template vult IDENTITY.md voor, gebruiker verfijnt
+- Persona-foto: avatar-generator of upload
 
-#### User-profiel
-
-Mapt op `USER.md`. Hermes **updatet dit automatisch** als het nieuwe informatie ontdekt in gesprekken.
-
-**MVP-velden**: naam, aanspreekvorm, voornaamwoorden.
-
-**Fasering:**
-
-| Fase | Deliverable |
-|------|-------------|
-| **A (MVP)** | Basis profiel opslaan als USER.md |
-| **B** | Uitgebreid profiel: functie, bedrijf, tijdzone, voorkeuren |
-| **C** | Automatische verrijking: Hermes stelt updates voor op basis van gesprekken |
-
-#### Knowledge Files
-
-**MVP**: drag-and-drop upload (PDF, DOCX, TXT, CSV, MD, code files) → chunking + embedding → opgeslagen in `/hermes-data/{user_id}/knowledge/`.
-
-**Fasering:**
-
-| Fase | Deliverable |
-|------|-------------|
-| **A (MVP)** | Upload + indexering, bestandenlijst |
-| **B** | Preview, tags, her-indexeren, zoeken |
-| **C** | Knowledge graph, conflict-detectie |
-| **D** | Browser extension, Google Drive / Notion auto-sync |
-
-**Backend-endpoints:**
-
-```
-GET  /brain/knowledge/identity
-PUT  /brain/knowledge/identity
-GET  /brain/knowledge/files
-POST /brain/knowledge/files   (multipart upload)
-```
+**Fase C — Meerdere persona's**
+- Per workspace meerdere agent-profielen (bv. werkagent vs. persoonlijk assistent)
+- Switchen via workspace-selector
 
 ---
 
-### Memory (Brain > Memory)
+#### 2.2 Soul
+
+**Wat de gebruiker ziet:**
+- Soul-card met beschrijvende tekst over de kernaard van de agent
+- Bewerkbaar
+
+**Hoe het werkt:**
+Soul is een sub-sectie van `IDENTITY.md` of een apart `SOUL.md` bestand. Het beschrijft **gedragsregels** en **waarden** — de richtlijnen die de agent volgt los van specifieke taken.
+
+**Fase A — Soul weergeven + bewerken**
+- Rich text editor voor Soul-tekst
+- Lengte-indicator (optimaal: 200-500 woorden)
+- Live preview: hoe de agent zich anders gedraagt met/zonder soul-definitie
+
+**Fase B — Soul-elementen**
+Gestructureerde bouwblokken i.p.v. vrije tekst:
+- Toon-slider: formeel ↔ casual
+- Empathie-niveau: taakgericht ↔ relationeel
+- Proactiviteit: reactief ↔ proactief
+- Output-stijl: beknopt ↔ uitgebreid
+
+---
+
+#### 2.3 User-profiel
+
+**Wat de gebruiker ziet:**
+- User-card: "Learn about the person you're helping"
+- Velden: Name, What to call them, Pronouns (optional)
+- Bewerkbaar
+
+**Hoe het werkt:**
+Mapt op `USER.md` in Hermes workspace. Wordt geïnjecteerd als user-context in elke prompt. Hermes **updatet dit automatisch** als het nieuwe informatie ontdekt in gesprekken.
+
+**Fase A — Basis user-profiel (MVP)**
+- Naam, aanspreekvorm, voornaamwoorden
+- Mastra schrijft naar `USER.md` bij opslaan
+
+**Fase B — Uitgebreid profiel**
+- Voorkeuren (taal, tijdzone, notificatiestijl)
+- Werkcontext: functie, bedrijf, tools die ze gebruiken
+- Persoonlijke context: interesses, doelen
+
+**Fase C — Automatische profielverrijking**
+- Hermes detecteert nieuwe user-info in gesprekken ("je werkt bij bedrijf X")
+- Proposeert update: "Ik heb geleerd dat je bij X werkt — bewaren?"
+- User bevestigt of verwerpt
+- History log: wanneer is welk feit toegevoegd
+
+---
+
+#### 2.4 Knowledge Files
+
+**Wat de gebruiker ziet:**
+- Drag-and-drop upload gebied: "Documents, images, CSVs, code files, and more"
+- `+ New` knop voor handmatige creatie
+
+**Hoe het werkt:**
+Geüploade bestanden worden opgeslagen in Hermes' kennis-directory. Bij relevante queries retrievet Hermes automatisch relevante passages via vector search of keyword matching.
+
+**Fase A — File upload + opslag (MVP)**
+- Upload: PDF, DOCX, TXT, CSV, MD, code files
+- Files worden opgeslagen in `/hermes-data/{user_id}/knowledge/`
+- Hermes indexeert automatisch bij upload (chunking + embedding)
+- UI: lijst van uploaded files met naam, type, grootte, datum
+
+**Fase B — File management**
+- Preview van bestandsinhoud in UI
+- Hernoemen, verwijderen, her-indexeren
+- Tag-systeem voor organisatie
+- Zoekfunctie binnen knowledge files
+
+**Fase C — Knowledge graph**
+- Hermes bouwt relaties tussen kennisitems
+- Visualisatie van verbonden concepten
+- "Conflicts detected": tegenstrijdige informatie highlighten
+
+**Fase D — Web clips + integrations**
+- Browser extension om webpagina's direct toe te voegen
+- Auto-sync met Google Drive / Notion folders
+- Periodieke re-indexering van gekoppelde bronnen
+
+---
+
+### Module 3 · Memory (Brain > Memory)
 
 Memory beheert **wat de agent onthoudt** over de gebruiker en gesprekken.
 
-**Hoe het werkt in Hermes:**
+**Wat de gebruiker ziet (lege state):**
+- Lege state met illustratie + "Nothing here yet"
+- Uitleg: "As you chat, your agent will build memory automatically — context from recent messages, session summaries, and key facts."
+- `+ Add` knop voor handmatig toevoegen
+
+**Hoe Memory werkt in Hermes:**
 
 ```
 /hermes-data/{user_id}/
-  MEMORY.md           ← persistent factual memory
+  MEMORY.md       ← persistent factual memory (key-value facts)
   sessions/
     {session_id}.md   ← gecomprimeerde sessie-samenvattingen
 ```
 
-MEMORY.md bevat gestructureerde feiten:
+**MEMORY.md** bevat gestructureerde feiten:
 ```markdown
 ## Facts
 - User werkt als product manager bij Acme Corp
 - User heeft voorkeur voor beknopte antwoorden
+- User's hond heet Max
 - Deadline Q2 review: 15 mei 2026
 ```
 
-Hermes laadt relevante memory-items via retrieval per run — niet de hele file.
+Hermes **laadt relevante memory-items** bij elke run via retrieval, niet de hele file. Dit houdt de context-window efficient.
 
-**Fasering:**
+**Fase A — Memory weergeven + handmatig beheren (MVP)**
+- Lijst van alle memory-items: feit + bron (automatisch/handmatig) + datum
+- `+ Add` → vrij tekstveld of gestructureerd (categorie: feit, deadline, voorkeur)
+- Delete knop per item
+- Memory-items zijn bewerkbaar
 
-| Fase | Deliverable |
-|------|-------------|
-| **A (MVP)** | Items weergeven, handmatig toevoegen/bewerken/verwijderen |
-| **B** | Automatische extractie na sessies + goedkeuringsflow |
-| **C** | Categorieën: feiten, deadlines, voorkeuren, projecten, sessie-samenvattingen |
-| **D** | Zoekbalk, tijdlijn, "memory used in this conversation" transparantie |
-| **E** | Proactieve inzet: deadline-reminders, cross-workspace sharing (opt-in) |
+**Fase B — Automatische memory-extractie**
+- Hermes extraheert na elke sessie automatisch nieuwe feiten
+- "New memory detected" notificatie in UI
+- User kan voorgestelde memories goedkeuren of verwerpen
+- Confidence-score per automatisch item
 
-**Backend-endpoints:**
+**Fase C — Memory categorieën + organisatie**
+Typen:
+- **Feiten**: wie de user is, werk, context
+- **Deadlines & afspraken**: datumgebonden herinneringen
+- **Voorkeuren**: communicatiestijl, tools, formaat
+- **Lopende projecten**: actieve context voor terugkerende taken
+- **Sessie-samenvattingen**: gecondenseerde gesprekshistory
 
-```
-GET    /brain/memory
-POST   /brain/memory          body: { fact, category }
-PATCH  /brain/memory/{id}
-DELETE /brain/memory/{id}
-```
+**Fase D — Memory-search + tijdlijn**
+- Zoekbalk binnen memories
+- Tijdlijn-view: memories gesorteerd op wanneer ze zijn toegevoegd
+- "Memory used in this conversation": transparantie welke items de agent heeft gebruikt
+- Export: download `MEMORY.md` als plaintext
+
+**Fase E — Proactieve memory-inzet**
+- "Herinnering": Hermes signaleert wanneer een deadline nadert
+- "Context herstel": bij nieuw gesprek laadt Hermes automatisch relevante vorige context
+- Cross-workspace memory-sharing (opt-in): teams die memory-facts delen
 
 ---
 
@@ -823,29 +962,38 @@ React (UI)
   │   └── GET /stream/:session_id      → SSE (Hermes output + token events)
   │
   ├── Brain > Tools
-  │   ├── GET/POST /connectors/...
-  │   └── GET/POST/DELETE /skills/...
+  │   ├── GET/POST /connectors/oauth   → OAuth flows
+  │   ├── GET /connectors/status       → connector status
+  │   ├── DELETE /connectors/{provider} → disconnect
+  │   ├── GET /skills/browse           → skill library
+  │   ├── POST /skills/install         → installeren
+  │   ├── GET /skills/installed        → overzicht
+  │   ├── PATCH /skills/{skill_id}     → toggle activatie
+  │   └── DELETE /skills/{skill_id}    → verwijderen
   │
   ├── Brain > Knowledge
-  │   ├── GET/PUT /brain/knowledge/identity
-  │   └── GET/POST /brain/knowledge/files
+  │   ├── GET/PUT /brain/knowledge/identity   → IDENTITY.md / SOUL.md
+  │   └── GET/POST /brain/knowledge/files     → knowledge files
   │
   └── Brain > Memory
-      ├── GET/POST /brain/memory
-      ├── PATCH /brain/memory/{id}
-      └── DELETE /brain/memory/{id}
+      ├── GET /brain/memory            → items lijst
+      ├── POST /brain/memory           → item toevoegen
+      ├── PATCH /brain/memory/{id}     → item bewerken
+      └── DELETE /brain/memory/{id}    → item verwijderen
 
 Mastra (TypeScript API-laag)
   │  authenticatie + autorisatie
   │  sandbox lifecycle management
   │  token budgetten per tier
   │  schrijft/leest Hermes workspace files
+  │  encrypted connector-token opslag
   │
 Hermes (Python agent runtime) — gedeeld proces, namespace-isolatie
   /hermes-data/
     sandbox/{sandbox_id}/      ← anonieme bezoekers (TTL 30 min)
     {user_id}/
       IDENTITY.md              ← agent-persona
+      SOUL.md                  ← gedragsregels en waarden
       USER.md                  ← user-profiel
       MEMORY.md                ← persistent facts
       skills/                  ← geïnstalleerde skills
@@ -856,7 +1004,7 @@ Hermes (Python agent runtime) — gedeeld proces, namespace-isolatie
 
 ---
 
-## Uitvoeringsplanning (Bijgewerkt)
+## Uitvoeringsplanning
 
 ```
 Week 1  — Fundament + live sandbox (kritieke path)
@@ -882,7 +1030,7 @@ Week 3  — Shell + Brain modules
   ├── F-04  Volledige transitie-animaties (sandbox → workspace)
   ├── F-09  Routing
   ├── B-06  Hermes namespace isolatie (sandbox + user)
-  └── Brain  Knowledge: Identity + User-profiel (MVP)
+  └── Brain  Knowledge: Identity + Soul + User-profiel (MVP)
 
 Week 4  — Afwerking + QA
   ├── F-10  Mobile layout
@@ -890,8 +1038,36 @@ Week 4  — Afwerking + QA
   ├── B-08  GDPR checks (sandbox TTL cleanup, delete account)
   ├── Brain  Memory: weergeven + handmatig beheren (MVP)
   ├── Brain  Skills: browse + installeren (MVP)
+  ├── Brain  Connectors: read-only OAuth (MVP)
   └── QA    End-to-end: landing → sandbox → Hermes → signup → promote → workspace
 ```
+
+---
+
+## Brain-modules — Fasering & Prioritering
+
+| Fase | Module | Deliverable | Prioriteit |
+|------|--------|-------------|------------|
+| **MVP** | Knowledge: Identity + Soul + User | Bewerken + opslaan IDENTITY.md / SOUL.md / USER.md | Hoog |
+| **MVP** | Memory: weergeven + handmatig | Items tonen, toevoegen, verwijderen | Hoog |
+| **MVP** | Skills: browse + installeren | Skills-registry + install-flow | Hoog |
+| **MVP** | Connectors: read-only OAuth | Google Calendar, Gmail, GitHub | Hoog |
+| **Fase B** | Memory: auto-extractie | Post-sessie memory-suggesties | Middel |
+| **Fase B** | Knowledge Files: upload + index | PDF/DOCX upload + embedding | Middel |
+| **Fase B** | Connectors: write-scope | Gmail sturen, Sheets schrijven | Middel |
+| **Fase B** | Soul-elementen | Gestructureerde toon/empathie/proactiviteit sliders | Middel |
+| **Fase B** | Skill management | Versies, toggle, gebruik-statistieken | Middel |
+| **Fase B** | User-profiel uitgebreid | Werkcontext, voorkeuren, tijdzone | Middel |
+| **Fase C** | Skills: custom aanmaken | Markdown-editor + skill-creator | Later |
+| **Fase C** | Memory: categorieën + zoeken | Organisatie + tijdlijn | Later |
+| **Fase C** | Knowledge graph | Relatie-visualisatie, conflict-detectie | Later |
+| **Fase C** | Meerdere persona's | Workspace agent-switching | Later |
+| **Fase C** | Automatische profielverrijking | Hermes detecteert user-info uit gesprekken | Later |
+| **Fase C** | Custom connectors | OpenAPI spec upload | Later |
+| **Fase D** | Knowledge: web clips + sync | Browser extension, Drive sync | Roadmap |
+| **Fase D** | Skills: marketplace | Publiceren + ratings | Roadmap |
+| **Fase D** | Memory-search + tijdlijn | Zoekbalk, export, transparantie | Roadmap |
+| **Fase E** | Proactieve memory | Deadline-reminders, cross-workspace sharing | Roadmap |
 
 ---
 
@@ -899,17 +1075,18 @@ Week 4  — Afwerking + QA
 
 | Prioriteit | Beslissing | Wie | Blokkeert |
 |-----------|------------|-----|-----------|
-| 🔴 Nu | **#2** Welk openingsbericht toont de sandbox? | Product | Eerste indruk product |
-| 🟡 Week 1 | **#9** LLM provider (OpenRouter/OpenAI/Anthropic)? | Arch | Kosten sandbox per pageview |
-| 🟡 Week 1 | **#1** Magic link of wachtwoord? | Product | B-01 |
-| 🟠 Week 3 | **#4** Hosting EU? | DevOps | B-06, B-08 |
-| 🟠 Week 3 | **#10** Hermes gateway: ingebouwd of eigen? | Arch | B-07 scope |
-| 🟠 Week 3 | **#13** Knowledge embeddings: lokaal of hosted? | Arch | Brain Knowledge |
-| 🟠 Week 3 | **#14** Memory-extractie: automatisch of opt-in? | Product | Brain Memory |
-| ⚪ Later | **#5** Analytics (Posthog/Mixpanel/geen)? | Product | Privacy scope |
-| ⚪ Later | **#15** Skills-registry: eigen of community? | Arch | Brain Skills |
-| ⚪ Later | **#16** Sandbox promote-flow UI? | Frontend | F-04 promote state |
-| ✅ Opgelost | Sandbox input: direct actief bij page load | Frontend | F-04 input state |
+| Nu | **#2** Welk openingsbericht toont de sandbox? | Product | Eerste indruk product |
+| Week 1 | **#9** LLM provider (OpenRouter/OpenAI/Anthropic)? | Arch | Kosten sandbox per pageview |
+| Week 1 | **#1** Magic link of wachtwoord? | Product | B-01 |
+| Week 3 | **#4** Hosting EU? | DevOps | B-06, B-08 |
+| Week 3 | **#10** Hermes gateway: ingebouwd of eigen? | Arch | B-07 scope |
+| Week 3 | **#13 / B2** Knowledge embeddings: lokaal (FAISS) of hosted (Pinecone/Weaviate)? | Arch | Brain Knowledge |
+| Week 3 | **#14 / B3** Memory-extractie: automatisch of opt-in? | Product | Brain Memory |
+| Week 3 | **B4** Connector-tokens: encrypted in Mastra DB of in Hermes workspace? | Arch | Security-architectuur |
+| Later | **#5** Analytics (Posthog/Mixpanel/geen)? | Product | Privacy scope |
+| Later | **#15 / B1** Skills-registry: eigen of community? | Arch | Brain Skills |
+| Later | **#16** Sandbox promote-flow UI? | Frontend | F-04 promote state |
+| Later | **B5** Custom skills: public by default of private-first? | Product | Marketplace-beleid |
 
 ---
 
