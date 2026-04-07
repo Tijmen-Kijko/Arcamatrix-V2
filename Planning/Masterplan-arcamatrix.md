@@ -510,28 +510,182 @@ DELETE /sandbox/{sandbox_id}  (internal cron — alleen sandboxes ZONDER user-bi
 
 ---
 
-### B-03 · Mastra ↔ Hermes bridge (MCP)
+### B-03 · Mastra ↔ Hermes MCP Bridge
 **Week:** 1 | **Blokkeert:** B-02, B-04, F-04, F-07
 
-**Status:** `In uitvoering` - lokale MCP spike staat klaar en is mock-gevalideerd; echte Hermes-validatie is nog geblokkeerd.
+**Status:** `In uitvoering` — lokale MCP spike staat klaar en is mock-gevalideerd; echte Hermes-validatie is nog geblokkeerd.
 
-**Update 7 april 2026:** Toegevoegd in de bestaande Arcamatrix codebase: een minimale stdio MCP client, een runnable `hermes-mcp-spike` script en een mock-integratietest voor `initialize -> tools/list -> tools/call`. De echte stap `python mcp_serve.py` + minimale ping/tool-call naar Hermes kon in deze workspace nog niet afgerond worden omdat er geen lokale Hermes checkout met `mcp_serve.py` aanwezig is en de huidige Arcamatrix kopie geen git-metadata bevat voor de gevraagde commit `hermes-mcp-spike`.
+**Update 7 april 2026:** Toegevoegd in de bestaande Arcamatrix codebase: een minimale stdio MCP client, een runnable `hermes-mcp-spike` script en een mock-integratietest voor `initialize → tools/list → tools/call`. De echte stap `python mcpserve.py` + minimale ping/tool-call naar Hermes kon in deze workspace nog niet afgerond worden omdat er geen lokale Hermes checkout met `mcpserve.py` aanwezig is.
 
-**Beslissing #6 genomen: gebruik MCP via `mcp_serve.py`.**
-
-```bash
-# Startpunt in Hermes-repo:
-python mcp_serve.py
-
-# Mastra-side: MCP client initialiseren
-# Stap 1: minimale ping/tool-call valideren → commit als 'hermes-mcp-spike'
-# Stap 2: wrapper bouwen voor session management
-# Stap 3: integratietest schrijven: Mastra → MCP → Hermes → response
-```
+**Beslissing #6 genomen: gebruik MCP via `mcpserve.py`.**
+**Beslissing #7: gedeeld Hermes-proces, namespace-geïsoleerd per sandbox/user — geen eigen proces per user.**
 
 **Prioriteit:** Dit ticket blokkeert nu ook de frontend (F-04, F-07) omdat live sandbox vereist is. B-03 is de harde kritieke path voor week 1.
 
-**Referentie:** `mcp_serve.py` in de Hermes-repo. Bekijk de Hermes-documentatie voor welke tools via MCP exposed worden.
+#### Context
+
+Stack: React (Vite) → Mastra (TypeScript) → Hermes (Python, v0.7.0).
+Integratiemethode: MCP via `mcpserve.py` (Beslissing 6).
+
+Bestaande spike in codebase:
+- Minimale stdio MCP client
+- Runnable `hermes-mcp-spike` script
+- Mock-integratietest voor `initialize → tools/list → tools/call`
+
+Wat NOG NIET werkt: de echte verbinding met een draaiende Hermes-instantie. Dit ticket maakt die echte verbinding.
+
+#### Stap 1 — Valideer de MCP-verbinding (ping spike)
+
+Start Hermes lokaal:
+```bash
+cd /path/to/hermes
+python mcpserve.py
+```
+
+Voer vanuit Mastra de volgende MCP calls uit in volgorde:
+1. `initialize` — handshake
+2. `tools/list` — verifieer dat tools beschikbaar zijn
+3. `tools/call` met de ping-tool — verifieer een round-trip response
+
+Verwacht resultaat: een succesvolle JSON-response van Hermes.
+Commit deze werkende spike als `hermes-mcp-spike`.
+
+#### Stap 2 — Bouw de HermesMCPClient class
+
+Locatie: `server/lib/hermesMCPClient.ts`
+
+```typescript
+export class HermesMCPClient {
+  private proc: ChildProcess;
+  private pending: Map<string, { resolve, reject }>;
+
+  constructor(hermesDataDir: string)
+  // Spawn: python mcpserve.py
+  // Pipe: stdin/stdout voor JSON-RPC over stdio
+  // hermesDataDir wordt als --data-dir meegegeven aan mcpserve.py
+
+  async initialize(): Promise<void>
+  // MCP initialize handshake
+
+  async listTools(): Promise<Tool[]>
+  // tools/list call
+
+  async callTool(name: string, args: Record<string, unknown>): Promise<ToolResult>
+  // tools/call call
+
+  async chat(namespace: string, message: string): Promise<AsyncIterable<string>>
+  // Stuur een chat-bericht naar Hermes namespace, stream tokens terug
+
+  async createNamespace(namespace: string): Promise<void>
+  // Maak een nieuwe Hermes namespace aan (voor sandbox of user)
+
+  async renameNamespace(from: string, to: string): Promise<void>
+  // Rename namespace (sandbox promote: sandbox-uuid → user-id)
+
+  async deleteNamespace(namespace: string): Promise<void>
+  // Verwijder namespace (sandbox TTL cleanup)
+
+  shutdown(): void
+  // Kill de mcpserve.py subprocess gracefully
+}
+```
+
+**Namespace-conventie (strict):**
+- Anonieme sandbox: `sandbox/{sandboxId}`
+- Ingelogde user: `user/{userId}`
+
+#### Stap 3 — Bouw de HermesBridge singleton
+
+Locatie: `server/lib/hermesBridge.ts`
+
+```typescript
+// Singleton: één gedeeld Hermes-proces, namespace-geïsoleerd per sandbox/user
+// (Beslissing 7: gedeeld proces, geïsoleerde namespaces — geen eigen proces per user)
+
+export const hermesBridge = new HermesMCPClient(process.env.HERMES_DATA_DIR);
+```
+
+Dit is de gedeelde daemon. Alle Mastra-routes importeren `hermesBridge` en sturen namespace-prefix mee bij elke call — nooit een eigen Hermes-instantie opstarten.
+
+#### Stap 4 — Plug de bridge in op de Mastra API-routes
+
+**POST /api/sandbox/create** (B-02):
+```typescript
+await hermesBridge.createNamespace(`sandbox/${sandboxId}`);
+// Seed lege IDENTITY.md en USER.md in de namespace
+```
+
+**GET /api/stream/:sessionId** (B-04 SSE pipeline):
+```typescript
+const stream = hermesBridge.chat(namespace, userMessage);
+for await (const token of stream) {
+  res.write(`data: ${JSON.stringify({ type: 'token', text: token })}\n\n`);
+}
+res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+```
+
+**POST /api/sandbox/promote** (B-02):
+```typescript
+await hermesBridge.renameNamespace(`sandbox/${sandboxId}`, `user/${userId}`);
+```
+
+**DELETE /api/sandbox/:sandboxId** (cron cleanup):
+```typescript
+await hermesBridge.deleteNamespace(`sandbox/${sandboxId}`);
+```
+
+#### Stap 5 — Schrijf de integratietest
+
+Locatie: `server/tests/hermesBridge.test.ts`
+
+Test de volledige flow end-to-end:
+1. `initialize` — handshake slaagt
+2. `createNamespace('sandbox/test-abc')` — namespace bestaat daarna
+3. `chat('sandbox/test-abc', 'Hoi')` — tokens komen terug als `AsyncIterable`
+4. `renameNamespace('sandbox/test-abc', 'user/test-user-1')` — namespace hernoemd
+5. `deleteNamespace('user/test-user-1')` — namespace verwijderd
+
+Elke stap assertion: geen throws, correcte response-types.
+
+#### Scope grenzen
+
+**In scope:**
+- HermesMCPClient over stdio (JSON-RPC)
+- Namespace lifecycle: create, rename, delete
+- `chat()` met token streaming
+- Integratie op B-02 en B-04 routes
+- Integratietest
+
+**Niet in scope:**
+- Token-budgetten (B-05)
+- TTL-timer logic (B-02)
+- SSE-event formatting (B-04)
+- Auth-validatie (B-01)
+
+#### Environment variabelen (toevoegen aan `.env`)
+
+```
+HERMES_DATA_DIR=./hermes-data
+HERMES_BIN=python
+HERMES_SCRIPT=./hermes/mcpserve.py
+```
+
+#### Acceptatiecriteria
+
+- [ ] `hermes-mcp-spike` commit aanwezig: initialize → tools/list → tools/call werkt
+- [ ] `HermesMCPClient` class gebouwd met alle methoden
+- [ ] `hermesBridge` singleton exporteert vanuit `server/lib/hermesBridge.ts`
+- [ ] `POST /api/sandbox/create` roept `createNamespace` aan op Hermes
+- [ ] `GET /api/stream/:sessionId` streamt echte Hermes-tokens via SSE
+- [ ] `POST /api/sandbox/promote` voert `renameNamespace` uit zonder dataverlies
+- [ ] Integratietest slaagt end-to-end
+- [ ] Geen eigen Hermes-proces per sandbox — altijd namespace-prefix op gedeeld proces
+
+#### Blocker
+
+Codex heeft het pad naar de lokale Hermes-checkout met `mcpserve.py` nodig. Zonder draaiende Hermes kan Stap 1 niet gevalideerd worden.
+
+**Referentie:** `mcpserve.py` in de Hermes-repo. Bekijk de Hermes-documentatie voor welke tools via MCP exposed worden.
 
 ---
 
