@@ -1,6 +1,6 @@
 /**
- * Mock useHermesStream — stuurt een welkomstbericht en simuleert stream lifecycle.
- * Swap terug naar ./useHermesStream zodra B-04 klaar is.
+ * Mock useHermesStream — sends a welcome message and simulates stream lifecycle.
+ * Swap back to ./useHermesStream once B-04 is complete.
  */
 import { useEffect, useRef } from 'react';
 import { useMessageStore } from '../stores/messageStore';
@@ -18,12 +18,12 @@ const WELCOME_MESSAGES: Message[] = [
   {
     id: 'mock-welcome-status',
     type: 'ai-status',
-    text: 'Hermes verbonden (mock)',
+    text: 'Hermes connected (mock)',
   },
   {
     id: 'mock-welcome-text',
     type: 'ai-text',
-    text: 'Welkom bij de Arcamatrix sandbox! Ik ben Hermes, je AI-assistent. Stel me een vraag of geef een opdracht.',
+    text: 'Welcome to the Arcamatrix sandbox! I am Hermes, your AI assistant. Ask me a question or give a task.',
   },
 ];
 

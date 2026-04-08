@@ -79,7 +79,7 @@ export function useHermesStream(
 
     const appendPreflightUpgradePrompt = (prompt: string, tier: 'sandbox' | 'free' | 'premium') => {
       const label =
-        tier === 'sandbox' ? 'Sandbox tokenbudget bereikt.' : 'Dagbudget bereikt.';
+        tier === 'sandbox' ? 'Sandbox token budget reached.' : 'Daily budget reached.';
 
       addMessage({
         id: `${sessionId}-budget-status`,

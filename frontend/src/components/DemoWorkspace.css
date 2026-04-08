@@ -208,6 +208,37 @@
 }
 .send-btn:hover { opacity: 0.85; }
 
+.ws-input-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sages-call-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--ease), color var(--ease);
+}
+.sages-call-btn:hover {
+  background: rgba(45, 212, 191, 0.1);
+  color: #2dd4bf;
+}
+.sages-call-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
 /* ── Legacy styles (auth card etc.) ─── */
 .ws-auth-card {
   width: min(100%, 540px);

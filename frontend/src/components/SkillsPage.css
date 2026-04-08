@@ -43,47 +43,51 @@
   color: var(--muted);
 }
 
-/* ─── Tabs ─── */
-.skills-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 20px;
-}
-.skills-tab {
-  padding: 8px 16px 10px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--muted);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: color var(--ease), border-color var(--ease);
-  user-select: none;
-  background: none;
-  border-top: none;
-  border-left: none;
-  border-right: none;
-  font-family: var(--font);
+/* ─── Toggle ─── */
+.skills-toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
 }
-.skills-tab:hover { color: var(--text); }
-.skills-tab.active {
-  color: var(--text);
-  border-bottom-color: var(--text);
+.skills-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
-.skills-tab-count {
-  font-size: 10.5px;
-  font-weight: 600;
+.skills-toggle-slider {
+  position: relative;
+  width: 32px;
+  height: 18px;
   background: var(--surface-3);
-  color: var(--muted);
-  padding: 1px 6px;
   border-radius: 9999px;
+  transition: background var(--ease);
+  flex-shrink: 0;
 }
-.skills-tab.active .skills-tab-count {
-  background: rgba(255,255,255,0.1);
-  color: var(--text);
+.skills-toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  background: var(--muted);
+  border-radius: 50%;
+  transition: transform var(--ease), background var(--ease);
+}
+.skills-toggle input:checked + .skills-toggle-slider {
+  background: var(--green-bg);
+}
+.skills-toggle input:checked + .skills-toggle-slider::after {
+  transform: translateX(14px);
+  background: var(--green);
+}
+.skills-toggle-label {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
 }
 
 /* ─── Toolbar ─── */

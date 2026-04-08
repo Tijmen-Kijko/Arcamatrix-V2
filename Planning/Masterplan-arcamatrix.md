@@ -187,6 +187,13 @@ Hermes daemon (gedeeld)
 | 15 | Skills-registry: eigen hosted of Hermes community? | 🔲 Open | — |
 | 16 | Sandbox promote-flow UI: modal, inline of aparte pagina? | 🔲 Open | — |
 | 17 | Brain-locatie in UI: sidebar of Account-pagina? | ✅ Besloten | **Account-pagina (Optie B)** |
+| 18 | Building project tasks: apart scherm of geïntegreerd in sidebar? | ✅ Besloten | **Eigen "Projects" nav-item in sidebar, los van Brain-modules** |
+| 19 | Drag-and-drop voor status-wijziging op het taskboard? | 🔲 Open (Fase B) | — |
+| 20 | Koppeling met externe task-tools (Jira, Linear, GitHub Issues)? | 🔲 Open (Fase D) | — |
+| 21 | TTS-provider voor Sages: OpenAI TTS, ElevenLabs of browser-native? | 🔲 Open | — |
+| 22 | Stem-keuze: vaste Arcamatrix-stem of instelbaar per gebruiker? | 🔲 Open | — |
+| 23 | Gesprekstranscriptie in chat: altijd zichtbaar of opt-in? | 🔲 Open | — |
+| 24 | Sages in sandbox: volledig blokkeren of signup-prompt na 3 sec? | ✅ Besloten | **Signup-prompt na 3 sec** |
 
 ---
 
@@ -326,6 +333,17 @@ Breakpoint < 800px: stacked (form bovenaan, sandbox eronder).
 
 OAuth-flow per provider, Connected badge, connector cards. Fase A: read-only.
 
+#### F-11b · Integrations Backend-sectie ✅
+**Status:** Afgerond (8 april 2026) | **NIET IN ORIGINEEL PLAN — achteraf gedocumenteerd**
+
+Collapsible "Backend" sectie bovenaan de Integrations-pagina met vier sub-items:
+- **Data & Entities** — database-achtige opslag
+- **Backend Functions** — serverless functies
+- **File Storage** — bestandsbeheer
+- **Automations** — backend workflows
+
+Deze sectie positioneert Arcamatrix als meer dan alleen OAuth-connectors — het toont een volledige backend-as-a-service laag. Momenteel UI-only (geen backend-endpoints).
+
 ---
 
 ### F-12 · Tools → Skills (browse + install)
@@ -400,15 +418,49 @@ Bij bevestiging verschuift de chat naar een smalle sidebar-positie (280px) en op
 
 **State:** `workspaceLayoutStore` (Zustand) — `layout: 'chat-only' | 'split-view'`, `previewHtml: string | null`
 
+**Huidige status (8 april 2026):**
+- ✅ F-16a: `PreviewPanel` component + toolbar (device toggle, refresh, close)
+- ✅ F-16b: iframe srcdoc + 400ms debounce
+- ✅ F-16c: `workspaceLayoutStore` Zustand store + hooks (`useIsSplitView`, `usePreviewHtml`, `useUpdatePreview`)
+- ✅ Handmatige trigger: "Open preview" knop in ProjectGroup sidebar → toont placeholder HTML per project
+- 🔲 F-16d: SSE event routing (`open_split_view` + `preview_update`) — wacht op B-04 + B-16
+
+**Wat werkt nu:** Klik op het monitor-icoon naast een project → split view opent met placeholder (projectnaam + "wacht op build"). Zodra de backend `preview_update` SSE events streamt, wordt de placeholder automatisch vervangen door live HTML.
+
 **Sub-tickets:**
 
-| Ticket | Omschrijving | Afhankelijk van |
-|--------|-------------|-----------------|
-| F-16a | `PreviewPanel` component + transitie-animaties | F-03, F-04 |
-| F-16b | `PreviewFrame` iframe srcdoc + debounce | F-16a |
-| F-16c | `useWorkspaceLayout` Zustand store + hooks | F-16a |
-| F-16d | SSE event routing `open_split_view` + `preview_update` | F-07, B-04 |
-| B-16 | Hermes gedragsregel (IDENTITY.md bouw-gedrag) + `preview_update` SSE events | B-03, B-04 |
+| Ticket | Omschrijving | Status | Afhankelijk van |
+|--------|-------------|--------|-----------------|
+| F-16a | `PreviewPanel` component + transitie-animaties | ✅ Done | F-03, F-04 |
+| F-16b | `PreviewFrame` iframe srcdoc + debounce | ✅ Done | F-16a |
+| F-16c | `useWorkspaceLayout` Zustand store + hooks | ✅ Done | F-16a |
+| F-16d | SSE event routing `open_split_view` + `preview_update` | 🔲 Open | F-07, B-04 |
+| B-16 | Hermes gedragsregel + `preview_update` SSE events | 🔲 Open | B-03, B-04 |
+
+**Backend-vereisten voor live preview (B-16):**
+
+Hermes moet twee SSE event-types ondersteunen via de streaming pipeline (B-04):
+
+1. **`open_split_view`** — Hermes stuurt dit event wanneer het detecteert dat de gebruiker een visueel project wil bouwen (website, app, dashboard). React vangt dit op in `useHermesStream` en roept `setSplitView()` aan.
+   ```json
+   { "type": "open_split_view" }
+   ```
+
+2. **`preview_update`** — Hermes stuurt complete HTML/CSS/JS als één string bij elke significante output-wijziging. React schrijft dit naar `updatePreview(html)` → iframe `srcdoc` wordt bijgewerkt (debounced 400ms).
+   ```json
+   { "type": "preview_update", "html": "<!DOCTYPE html>..." }
+   ```
+
+**Hermes IDENTITY.md bouw-gedrag:**
+- Wanneer Hermes een bouw-taak herkent, stuur eerst `open_split_view`
+- Bij elke code-generatie stap: stuur `preview_update` met de complete, renderable HTML (niet incrementeel — altijd het volledige document)
+- HTML moet self-contained zijn (inline CSS/JS, geen externe imports tenzij CDN)
+- Bij afsluiting van de bouw-sessie: geen speciale close-event nodig (gebruiker sluit preview handmatig)
+
+**Implementatievolgorde backend:**
+1. B-03 (MCP bridge) moet draaien ← **blokkeert alles**
+2. B-04 (SSE pipeline) moet `type`-based event routing ondersteunen (niet alleen tekst-tokens)
+3. B-16: Hermes IDENTITY.md aanpassen met bouw-gedragsregels + `preview_update` output format
 
 **Open beslissingen:**
 
@@ -416,6 +468,133 @@ Bij bevestiging verschuift de chat naar een smalle sidebar-positie (280px) en op
 |---|-------|--------|
 | 17 | Preview minimale breedte op mobile: stacked of verbergen? | Open |
 | 18 | Preview-persistentie: iframe-staat bij chat-scroll of reset bij update? | Open |
+| 19 | Preview max-grootte HTML: limiet op `preview_update` payload? | Open |
+| 20 | Meerdere bestanden: moet Hermes multi-file projecten bundelen tot één HTML? | Open |
+
+---
+
+### F-17 · ProjectList + ProjectTaskBoard (Building Project Tasks) ✅
+**Week:** 3-4 | **Afhankelijk van:** F-03 (WorkspaceSidebar), F-09 (Routing), B-14 | **Blokkeert:** F-18, F-19
+**Status:** Afgerond als frontend-stub (8 april 2026)
+
+Building project tasks zijn het vangnet voor alle mogelijke en afgesproken taken per bouwproject. Ze werken fundamenteel anders dan daily tasks: ze zijn project-gebonden, Arcamatrix beheert ze automatisch, en ze zijn altijd zichtbaar met een duidelijke status.
+
+**Wat er gebouwd is:**
+- `ProjectsPage` — overzicht van alle bouwprojecten + drie-koloms bord per project (Backlog · In behandeling · Afgerond)
+- `TaskCard` — individuele taakkaart met bron-indicator (platform/WhatsApp/Telegram/Arcamatrix)
+- Zustand store (`projectStore.ts`) + custom hooks (`useProjects.ts`) — patroon identiek aan bestaande stores
+- `services/projectApi.ts` — stub-endpoints (zelfde aanpak als B-01 auth-stub)
+- Sidebar uitgebreid met "All Projects" nav-item + per-project "Task Board" link
+
+**Data model:**
+```typescript
+interface Project {
+  id: string; user_id: string; name: string; description?: string;
+  created_at: string; last_activity: string;
+}
+
+interface ProjectTask {
+  id: string; project_id: string; title: string; description?: string;
+  status: 'backlog' | 'in_progress' | 'done';
+  source: 'platform' | 'whatsapp' | 'telegram' | 'arcamatrix';
+  priority?: 'low' | 'medium' | 'high';
+  created_at: string; updated_at: string;
+  started_at?: string; completed_at?: string;
+  arcamatrix_note?: string;
+}
+```
+
+**Arcamatrix-gedrag (toekomstig, wacht op B-17):**
+- Gebruiker stuurt via WhatsApp/Telegram/platform een idee → Arcamatrix voegt het toe als Backlog-taak
+- Gebruiker zegt "begin hier direct mee" → Arcamatrix start direct, taak krijgt status `in_progress`
+- Status-wijzigingen komen real-time binnen via SSE
+
+**Geen drag-and-drop in MVP** — dit is fase B.
+
+---
+
+### F-18 · TaskDetailPanel ✅
+**Week:** 4 | **Afhankelijk van:** F-17
+**Status:** Afgerond (8 april 2026)
+
+Sliding side-panel (translateX animatie, 350ms cubic-bezier(0.16, 1, 0.3, 1)) dat opent bij klik op een TaskCard. Toont volledige taak-details, bewerkbare titel/beschrijving, status-switcher, Arcamatrix-notitie (readonly met teal accent border), activiteitslog, en bevestigde verwijder-actie.
+
+---
+
+### F-19 · AddTaskModal ✅
+**Week:** 4 | **Afhankelijk van:** F-17
+**Status:** Afgerond (8 april 2026)
+
+Eenvoudig modal voor het handmatig aanmaken van een Backlog-taak via het platform. Nieuwe taken beginnen altijd in Backlog. Source wordt automatisch `platform`. Bevat taaknaam, optionele beschrijving, en prioriteit-keuze.
+
+---
+
+### F-20 · Daily Tasks — Automation Dashboard ✅
+**Week:** 3 | **Locatie:** Workspace sidebar → Daily Tasks → Tasks
+**Status:** Afgerond (8 april 2026) | **NIET IN ORIGINEEL PLAN — achteraf gedocumenteerd**
+
+Automation dashboard dat laat zien hoeveel tijd Arcamatrix bespaart via geautomatiseerde workflows.
+
+**Wat gebouwd is:**
+- **Time-saved hero** met toggle per periode (Today / Week / Month)
+- **Stats row:** Active automations · Runs today · Time saved
+- **6 mock automation cards:**
+  1. Email triage & labeling
+  2. Weekly report generator
+  3. Agenda sync & reminders
+  4. Lead intake from LinkedIn
+  5. Invoice processing
+  6. Social media scheduler
+- Per card: status (active/paused/error), trigger-type, run count, time saved
+- Expandable detail view per card: beschrijving, last run, metrics
+
+**Afhankelijk van (toekomstig):** B-07 (Hermes gateway) voor echte cron-scheduler data, Hermes skills-systeem voor automation-definities.
+
+**Relatie tot sidebar-structuur:** Het masterplan definieerde "Daily Tasks" als sidebar-sectie met Tasks/Files/Chats sub-items. Dit ticket voegt de daadwerkelijke Tasks-view in met automation-focus.
+
+---
+
+### F-21 · SettingsModal (afwijking van F-15) ✅
+**Week:** 3 | **Status:** Afgerond (8 april 2026) | **NIET IN ORIGINEEL PLAN — achteraf gedocumenteerd**
+
+F-15 specificeert een volledige Account-pagina op `/account` met tabs: Profiel, Brain, Billing, API. In plaats daarvan is een **modal** gebouwd met 2 tabs:
+- **Account & Billing** — placeholder
+- **API** — placeholder
+
+**Afwijkingen t.o.v. F-15:**
+- Modal i.p.v. aparte pagina (geen route `/account`)
+- Geen Profiel-tab (USER.md)
+- Geen Brain-tab (Identity/Soul/Knowledge/Memory)
+
+**Open vraag:** Is de modal de definitieve richting, of wordt F-15 als volledige pagina alsnog gebouwd? Als de modal blijft, moet de Brain-functionaliteit elders landen.
+
+---
+
+### F-22 · Sages — Call-knoppen in InputBar
+**Week:** 3 | **Afhankelijk van:** F-04 (SandboxWorkspace / InputBar) | **Blokkeert:** F-23
+
+Voeg twee icon-knoppen toe aan de bestaande `InputBar`: een telefoon-icoon (voice-only) en een video-icoon (video + avatar). Knoppen zijn 34×34px, consistent met de bestaande MorphButton send-state. Hover-state via teal highlight. In sandbox: knoppen zichtbaar maar triggeren na 3 seconden een signup-prompt.
+
+---
+
+### F-23 · Sages — SagesOverlay + CallControls
+**Week:** 3-4 | **Afhankelijk van:** F-22, S-01 | **Blokkeert:** F-24, F-25
+
+Volledige overlay die de werkruimte bedekt bij een actief gesprek. Animaties: `opacity + scale` in `350ms cubic-bezier(0.16, 1, 0.3, 1)` bij openen, `250ms ease-in` bij sluiten. Drie zones: avatar/waveform, transcriptie-label, call-controls. Drie call-knoppen (mute, camera, ophangen) met correcte active-states. Escape-toets hangt op. Na ophangen: transcript gepushed naar messageStore als normale chatberichten.
+
+---
+
+### F-24 · Sages — SagesAvatar (video-modus)
+**Week:** 4 | **Afhankelijk van:** F-23, S-01
+
+Geanimeerde 2D CSS-avatar (geen 3D/WebGL). Vier states: `idle` (zweefbeweging), `listening` (pulserende ring), `thinking` (roterende gradient-border), `speaking` (amplitude-gedreven schaalanimatie via Web Audio API analyser). Amplitude wordt uitgelezen van de TTS-audiostream. `prefers-reduced-motion`: alle animaties disabled.
+
+---
+
+### F-25 · Sages — SagesWaveform (voice-modus)
+**Week:** 4 | **Afhankelijk van:** F-23, S-01
+
+Canvas-gebaseerde audio waveform visualizer. Groen voor microfoon-input, teal voor TTS-output. Geen externe libraries — puur Web Audio API + `requestAnimationFrame`. Schakelaar gebeurt automatisch op basis van wie er spreekt.
 
 ---
 
@@ -583,6 +762,118 @@ Per project eigen Hermes namespace: `/hermes-data/{user_id}/projects/{project_id
 
 ---
 
+### B-17 · Project Tasks API + SSE events (Mastra)
+**Week:** 3-4 | **Afhankelijk van:** B-01, B-04, B-14 | **Blokkeert:** F-17 (real-time)
+**NIEUW — building project tasks backend**
+
+```
+GET  /projects/:id/tasks              → { tasks: ProjectTask[] }
+POST /projects/:id/tasks              → { task: ProjectTask }
+  body: { title, description?, priority?, source, status: 'backlog' }
+
+PATCH /projects/:id/tasks/:taskId     → { task: ProjectTask }
+  body: { status?, title?, description?, arcamatrix_note? }
+
+DELETE /projects/:id/tasks/:taskId    → { deleted: true }
+```
+
+**SSE uitbreiding (B-04):**
+Wanneer Arcamatrix via Hermes een taak aanmaakt of bijwerkt (vanuit WhatsApp, Telegram of autonoom), emits Mastra een SSE-event:
+```
+event: project_update
+data: { type: 'task_created' | 'task_updated' | 'task_deleted', task: ProjectTask }
+```
+
+**Hermes-integratie (via MCP, B-03):**
+- `project_task_create(project_id, title, description, priority)` — taak aanmaken
+- `project_task_update_status(task_id, status, arcamatrix_note)` — status updaten
+- `project_task_list(project_id)` — taken ophalen voor context
+
+**Opslag:** in Mastra DB (PostgreSQL of SQLite), niet in Hermes namespace-files — taken zijn gestructureerde data, geen vrije-tekst memory.
+
+---
+
+## Service Tickets
+
+### S-01 · Sages — Web Speech API + TTS pipeline (Mastra)
+**Week:** 3-4 | **Afhankelijk van:** B-03 (Hermes MCP bridge) | **Blokkeert:** F-23, F-24, F-25
+
+```
+POST /sages/session/start
+  body: { mode: 'voice' | 'video', workspace_id }
+  → { session_id, tts_voice }
+
+POST /sages/speak
+  body: { session_id, transcript }
+  → Mastra stuurt transcript naar Hermes (via bestaande MCP)
+  → Hermes genereert tekstresponse
+  → Mastra stuurt tekst naar OpenAI TTS API
+  → { response_text, response_audio_url }
+
+POST /sages/tts
+  body: { text, voice }
+  → Proxied naar OpenAI TTS API
+  → audio/mpeg stream terug naar client
+
+POST /sages/session/end
+  body: { session_id }
+  → { duration_seconds, transcript: SagesMessage[] }
+```
+
+**STT:** Client-side via Web Speech API (geen server-side STT nodig in MVP — browser doet het zelf). Fallback-label in UI wanneer Web Speech API niet beschikbaar is.
+
+**TTS-stem:** Sla de gekozen stem op in `USER.md` als voorkeur. Default: `nova` (OpenAI TTS).
+
+**Token-verbruik:** Sages-gesprekken verbruiken tokens via de bestaande B-05 token-counter. Een typisch 2-minuten gesprek ≈ 500-1000 tokens. Tokens worden per beurtwisseling opgeteld, niet per seconde.
+
+**Beslissing vereist:** Welke TTS-provider voor Sages? (Beslissing #21)
+
+---
+
+### Sages — Data model
+
+```typescript
+interface SagesSession {
+  id: string;
+  workspace_id: string;
+  mode: 'voice' | 'video';
+  started_at: string;
+  ended_at?: string;
+  duration_seconds?: number;
+  tts_voice: string;
+  transcript: SagesMessage[];
+}
+
+interface SagesMessage {
+  role: 'user' | 'assistant';
+  text: string;
+  timestamp: string;
+}
+```
+
+Sages-sessies worden als afzonderlijke records opgeslagen in de Mastra DB (naast de normale chat-sessies). Na afloop wordt de transcript gespiegeld in de reguliere chatgeschiedenis.
+
+### Sages — Architectuur
+
+```
+React (SagesOverlay)
+  │
+  ├── Web Speech API (STT)          ← client-side, geen server
+  │     └── transcript → POST /sages/speak
+  │
+  ├── POST /sages/speak
+  │     └── Mastra → Hermes (via MCP, B-03)
+  │           └── response text → Mastra
+  │
+  └── POST /sages/tts
+        └── Mastra → OpenAI TTS API
+              └── audio/mpeg stream → Web Audio API analyser
+                    ├── SagesAvatar amplitude-animatie
+                    └── SagesWaveform visualisatie
+```
+
+---
+
 ## Uitvoeringsplanning
 
 ```
@@ -604,30 +895,48 @@ Week 2  — Integratie + streaming
   ├── B-04  SSE streaming pipeline productie
   └── B-05  Token teller (sandbox + gratis tier)    ◐ (stub live)
 
-Week 3  — Sidebar + nieuwe features + split view
-  ├── F-03  WorkspaceSidebar (arcamatrix-sidebar.html)
-  ├── F-09  Routing (/workspace, /account, /tasks, /projects)
+Week 3  — Sidebar + nieuwe features + split view + Sages start
+  ├── F-03  WorkspaceSidebar (+ Projects nav-item)   ← UPDATED
+  ├── F-09  Routing (+ /projects/:id route)          ← UPDATED
   ├── F-13  Secrets UI                              NIEUW
   ├── F-14  Projects UI                             NIEUW
   ├── F-16  Visual Split View ("Bouw modus")        NIEUW
+  ├── F-17  ProjectList + ProjectTaskBoard (start)  ✅ NIEUW
+  ├── F-20  Daily Tasks Automation Dashboard        ✅ ACHTERAF GEDOCUMENTEERD
+  ├── F-21  SettingsModal                           ✅ ACHTERAF GEDOCUMENTEERD (afwijking F-15)
+  ├── F-11b Integrations Backend-sectie             ✅ ACHTERAF GEDOCUMENTEERD
+  ├── F-22  Sages call-knoppen in InputBar          ← NIEUW (Sages)
+  ├── F-23  SagesOverlay + CallControls (start)     ← NIEUW (Sages)
   ├── F-04  Volledige transitie-animaties
   ├── B-06  Hermes namespace isolatie
   ├── B-13  Secrets API                             NIEUW
   ├── B-14  Projects API                            NIEUW
-  └── B-16  Hermes bouw-gedrag + preview SSE        NIEUW
+  ├── B-16  Hermes bouw-gedrag + preview SSE        NIEUW
+  ├── B-17  Project Tasks API stub + SSE (start)    NIEUW
+  └── S-01  Sages TTS pipeline + stub-endpoints     ← NIEUW (Sages)
 
-Week 4  — Account-pagina, Brain, QA
-  ├── F-10  Mobile layout
+Week 4  — Account-pagina, Brain, Sages afwerking, QA
+  ├── F-10  Mobile layout (incl. ProjectTaskBoard tabs + Sages mobile) ← UPDATED
   ├── F-11  Tools → Integrations (connector cards)
   ├── F-12  Tools → Skills (browse + install)
   ├── F-15  Account-pagina (Profiel / Brain / Billing / API)
+  ├── F-17  ProjectTaskBoard (afronding + real-time SSE) ✅
+  ├── F-18  TaskDetailPanel                         ✅ NIEUW
+  ├── F-19  AddTaskModal                            ✅ NIEUW
+  ├── F-23  SagesOverlay (afronding)                ← NIEUW (Sages)
+  ├── F-24  SagesAvatar (video-modus)               ← NIEUW (Sages)
+  ├── F-25  SagesWaveform (voice-modus)             ← NIEUW (Sages)
+  ├── S-01  Sages TTS productie-koppeling           ← NIEUW (Sages)
   ├── B-07  Hermes gateway (WhatsApp/Telegram)
   ├── B-08  GDPR checks
   ├── B-09  Connectors OAuth API
   ├── B-10  Skills API
   ├── B-11  Brain Knowledge API
   ├── B-12  Brain Memory API
+  ├── B-17  Project Tasks API productie-koppeling   NIEUW
   └── QA    End-to-end: landing → sandbox → signup → workspace → account
+            + WhatsApp bericht → task aangemaakt → zichtbaar in board
+            + voice call → transcript in chat → tokens verbruikt
 ```
 
 ---
@@ -644,6 +953,7 @@ Week 4  — Account-pagina, Brain, QA
 | **MVP** | Tools → Integrations read-only OAuth | Google Calendar, Gmail, GitHub | Hoog |
 | **MVP** | Secrets | Encrypted key/value store | Hoog |
 | **MVP** | Projects | Project CRUD + per-project Tasks/Files/Chats | Hoog |
+| **MVP** | Building Project Tasks | Kanban board (Backlog/In behandeling/Afgerond) per project + real-time SSE | Hoog |
 | **Fase B** | Memory auto-extractie | Post-sessie memory-suggesties | Middel |
 | **Fase B** | Knowledge Files upload + index | PDF/DOCX + embedding | Middel |
 | **Fase B** | Connectors write-scope | Gmail sturen, Sheets schrijven | Middel |
@@ -729,6 +1039,9 @@ Hermes (Python — gedeeld proces, namespace-isolatie)
 | Later | 15 | Skills-registry: eigen of community? | Brain Skills |
 | Later | 16 | Sandbox promote-flow UI? | F-04 promote state |
 | Later | B5 | Custom skills: public of private-first? | Marketplace |
+| Week 3 | 21 | TTS-provider voor Sages? | S-01 scope |
+| Week 3 | 22 | Stem-keuze: vast of instelbaar? | User experience |
+| Later | 23 | Gesprekstranscriptie: zichtbaar of opt-in? | UX |
 
 ---
 

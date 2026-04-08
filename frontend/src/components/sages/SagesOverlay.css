@@ -1,0 +1,286 @@
+/* ── SagesOverlay ───────────────────────────────────────── */
+
+.sages-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.sages-overlay--opening {
+  animation: sages-enter 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.sages-overlay--closing {
+  animation: sages-exit 250ms ease-in forwards;
+}
+
+@keyframes sages-enter {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes sages-exit {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.96); }
+}
+
+/* ── Avatar Zone ───────────────────────────────────────── */
+
+.sages-avatar-zone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 0;
+}
+
+.sages-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.sages-duration {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Status Label ──────────────────────────────────────── */
+
+.sages-status-label {
+  font-size: 13px;
+  color: var(--muted);
+  min-height: 20px;
+}
+
+/* ── Avatar (video mode) ───────────────────────────────── */
+
+.sages-avatar {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  color: #2dd4bf; /* teal primary */
+  will-change: transform;
+}
+
+.sages-avatar__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid #2dd4bf;
+  box-shadow: 0 0 32px rgba(45, 212, 191, 0.3);
+  pointer-events: none;
+}
+
+.sages-avatar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* States */
+.sages-avatar--idle {
+  animation: sages-idle 3s ease-in-out infinite;
+}
+
+.sages-avatar--listening .sages-avatar__ring {
+  animation: sages-listen 1s ease-out infinite;
+}
+
+.sages-avatar--thinking .sages-avatar__ring {
+  animation: sages-think 2s linear infinite;
+  border-image: conic-gradient(#2dd4bf, transparent, #2dd4bf) 1;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  background:
+    linear-gradient(var(--bg), var(--bg)) padding-box,
+    conic-gradient(#2dd4bf, transparent 40%, #2dd4bf) border-box;
+}
+
+.sages-avatar--connecting {
+  animation: sages-idle 1.5s ease-in-out infinite;
+  opacity: 0.7;
+}
+
+/* speaking: amplitude-driven via JS, no CSS animation */
+.sages-avatar--speaking {
+  animation: none;
+}
+
+@keyframes sages-idle {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+@keyframes sages-listen {
+  0%   { box-shadow: 0 0 0 3px #2dd4bf, 0 0 0 0 rgba(45, 212, 191, 0.4); }
+  100% { box-shadow: 0 0 0 3px #2dd4bf, 0 0 0 20px rgba(45, 212, 191, 0); }
+}
+
+@keyframes sages-think {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Waveform (voice mode) ─────────────────────────────── */
+
+.sages-waveform {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+}
+
+/* ── Transcription Zone ────────────────────────────────── */
+
+.sages-transcription {
+  padding: 12px 24px;
+  text-align: center;
+  min-height: 40px;
+}
+
+.sages-interim {
+  font-style: italic;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ── Fallback ──────────────────────────────────────────── */
+
+.sages-fallback {
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ── Call Controls Zone ────────────────────────────────── */
+
+.sages-controls-zone {
+  padding: 32px 0 48px;
+  flex-shrink: 0;
+}
+
+.sages-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.sages-ctrl-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--text);
+  transition: background 180ms cubic-bezier(0.16, 1, 0.3, 1),
+              color 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sages-ctrl-btn:hover {
+  background: var(--surface-3);
+}
+
+.sages-ctrl-btn:focus-visible {
+  outline: 2px solid #2dd4bf;
+  outline-offset: 2px;
+}
+
+/* Active toggle (muted / camera off) */
+.sages-ctrl-active {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+}
+
+.sages-ctrl-active:hover {
+  background: rgba(234, 179, 8, 0.25);
+}
+
+/* End call button — always red, larger */
+.sages-ctrl-end {
+  width: 64px;
+  height: 64px;
+  background: #ef4444;
+  color: #fff;
+}
+
+.sages-ctrl-end:hover {
+  background: #dc2626;
+}
+
+/* ── Reduced motion ────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .sages-overlay--opening,
+  .sages-overlay--closing {
+    animation: none;
+  }
+  .sages-avatar--idle,
+  .sages-avatar--listening .sages-avatar__ring,
+  .sages-avatar--thinking .sages-avatar__ring,
+  .sages-avatar--connecting {
+    animation: none;
+  }
+}
+
+/* ── Mobile (< 800px) ─────────────────────────────────── */
+
+@media (max-width: 800px) {
+  .sages-avatar {
+    width: 160px;
+    height: 160px;
+  }
+
+  .sages-ctrl-btn {
+    width: 64px;
+    height: 64px;
+  }
+
+  .sages-ctrl-end {
+    width: 72px;
+    height: 72px;
+  }
+
+  .sages-controls-zone {
+    padding-bottom: 32px;
+  }
+}
+
+/* ── Mobile landscape ──────────────────────────────────── */
+
+@media (max-width: 800px) and (orientation: landscape) {
+  .sages-overlay {
+    flex-direction: row;
+  }
+
+  .sages-avatar-zone {
+    flex: 1;
+  }
+
+  .sages-controls-zone {
+    padding: 0 32px 0 0;
+  }
+
+  .sages-controls {
+    flex-direction: column;
+  }
+}

@@ -205,13 +205,13 @@
   width: 20px; height: 20px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   border-radius: var(--radius-sm);
-  color: var(--faint);
+  color: var(--muted);
   cursor: pointer;
   opacity: 0;
   transition: opacity var(--ease), background var(--ease), color var(--ease);
 }
 .project-header:hover .proj-preview-btn { opacity: 1; }
-.proj-preview-btn:hover { background: var(--surface-3); color: var(--text); }
+.proj-preview-btn:hover { background: var(--surface-3); color: var(--green); }
 
 .project-header .chevron {
   flex-shrink: 0; display: flex; align-items: center;

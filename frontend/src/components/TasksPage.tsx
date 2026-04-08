@@ -20,62 +20,62 @@ const automations: Automation[] = [
   {
     id: 'a1',
     name: 'Email triage & labeling',
-    description: 'Leest inkomende e-mails, labelt op prioriteit en stuurt samenvattingen naar Slack.',
+    description: 'Reads incoming emails, labels by priority and sends summaries to Slack.',
     status: 'active',
-    lastRun: '2 min geleden',
+    lastRun: '2 min ago',
     runsToday: 34,
     timeSaved: { today: 45, week: 210, month: 840 },
-    trigger: 'Elke nieuwe e-mail',
+    trigger: 'Every new email',
   },
   {
     id: 'a2',
     name: 'Weekly report generator',
-    description: 'Haalt KPIs uit Google Sheets en maakt een samenvatting in Notion.',
+    description: 'Retrieves KPIs from Google Sheets and creates a summary in Notion.',
     status: 'active',
-    lastRun: 'gisteren 17:00',
+    lastRun: 'yesterday 17:00',
     runsToday: 0,
     timeSaved: { today: 0, week: 60, month: 240 },
-    trigger: 'Elke vrijdag 17:00',
+    trigger: 'Every Friday 17:00',
   },
   {
     id: 'a3',
     name: 'Agenda sync & reminders',
-    description: 'Synchroniseert Google Calendar met taken en stuurt herinneringen via WhatsApp.',
+    description: 'Syncs Google Calendar with tasks and sends reminders via WhatsApp.',
     status: 'active',
-    lastRun: '15 min geleden',
+    lastRun: '15 min ago',
     runsToday: 8,
     timeSaved: { today: 20, week: 95, month: 380 },
-    trigger: 'Elk uur',
+    trigger: 'Every hour',
   },
   {
     id: 'a4',
     name: 'Lead intake from LinkedIn',
-    description: 'Vangt nieuwe LinkedIn-berichten op en maakt automatisch HubSpot-contacten aan.',
+    description: 'Captures new LinkedIn messages and automatically creates HubSpot contacts.',
     status: 'paused',
-    lastRun: '3 dagen geleden',
+    lastRun: '3 days ago',
     runsToday: 0,
     timeSaved: { today: 0, week: 0, month: 150 },
-    trigger: 'Nieuw LinkedIn-bericht',
+    trigger: 'New LinkedIn message',
   },
   {
     id: 'a5',
     name: 'Invoice processing',
-    description: 'Herkent facturen in Gmail, extraheert bedragen en boekt ze in Stripe.',
+    description: 'Recognizes invoices in Gmail, extracts amounts and books them in Stripe.',
     status: 'error',
-    lastRun: 'vandaag 09:12',
+    lastRun: 'today 09:12',
     runsToday: 2,
     timeSaved: { today: 10, week: 55, month: 220 },
-    trigger: 'E-mail met bijlage',
+    trigger: 'Email with attachment',
   },
   {
     id: 'a6',
     name: 'Social media scheduler',
-    description: 'Plant en publiceert content op TikTok en LinkedIn op basis van een contentkalender.',
+    description: 'Plans and publishes content on TikTok and LinkedIn based on a content calendar.',
     status: 'active',
-    lastRun: 'vandaag 08:00',
+    lastRun: 'today 08:00',
     runsToday: 3,
     timeSaved: { today: 30, week: 150, month: 600 },
-    trigger: 'Dagelijks 08:00',
+    trigger: 'Daily at 08:00',
   },
 ];
 
@@ -121,13 +121,13 @@ function formatTime(minutes: number): string {
   if (minutes < 60) return `${minutes}min`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return m > 0 ? `${h}u ${m}min` : `${h}u`;
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
 const periodLabels: Record<TimePeriod, string> = {
-  today: 'Vandaag',
-  week: 'Deze week',
-  month: 'Deze maand',
+  today: 'Today',
+  week: 'This week',
+  month: 'This month',
 };
 
 /* ─── Component ─── */
@@ -143,7 +143,7 @@ export function TasksPage() {
     <div className="tasks-page">
       <div className="tasks-header">
         <h1 className="tasks-title">Daily Tasks</h1>
-        <div className="tasks-subtitle">Jouw automations en bespaarde tijd</div>
+        <div className="tasks-subtitle">Your automations and time saved</div>
       </div>
 
       {/* Time saved hero */}
@@ -151,7 +151,7 @@ export function TasksPage() {
         <div className="time-saved-main">
           <div className="time-saved-icon"><ClockIcon /></div>
           <div className="time-saved-content">
-            <div className="time-saved-label">Tijd bespaard</div>
+            <div className="time-saved-label">Time saved</div>
             <div className="time-saved-value">{formatTime(totalTimeSaved)}</div>
           </div>
           <div className="time-saved-period-toggle">
@@ -173,21 +173,21 @@ export function TasksPage() {
             <div className="stat-icon active"><ZapIcon /></div>
             <div className="stat-info">
               <div className="stat-value">{activeCount}</div>
-              <div className="stat-label">Actieve automations</div>
+              <div className="stat-label">Active automations</div>
             </div>
           </div>
           <div className="stat-card">
             <div className="stat-icon runs"><PlayIcon /></div>
             <div className="stat-info">
               <div className="stat-value">{totalRuns}</div>
-              <div className="stat-label">Runs vandaag</div>
+              <div className="stat-label">Runs today</div>
             </div>
           </div>
           <div className="stat-card">
             <div className="stat-icon trend"><TrendUpIcon /></div>
             <div className="stat-info">
               <div className="stat-value">{formatTime(totalTimeSaved)}</div>
-              <div className="stat-label">{periodLabels[period]} bespaard</div>
+              <div className="stat-label">{periodLabels[period]} saved</div>
             </div>
           </div>
         </div>
@@ -219,16 +219,16 @@ export function TasksPage() {
                   </div>
                   <div className="automation-time-saved">
                     <span className="automation-time-value">{formatTime(a.timeSaved[period])}</span>
-                    <span className="automation-time-label">bespaard</span>
+                    <span className="automation-time-label">saved</span>
                   </div>
                   <div className="automation-runs">
                     <span className="automation-runs-value">{a.runsToday}</span>
                     <span className="automation-runs-label">runs</span>
                   </div>
                   <div className={`automation-status-badge ${a.status}`}>
-                    {a.status === 'active' && <><PlayIcon /> Actief</>}
-                    {a.status === 'paused' && <><PauseIcon /> Gepauzeerd</>}
-                    {a.status === 'error' && <><AlertIcon /> Fout</>}
+                    {a.status === 'active' && <><PlayIcon /> Active</>}
+                    {a.status === 'paused' && <><PauseIcon /> Paused</>}
+                    {a.status === 'error' && <><AlertIcon /> Error</>}
                   </div>
                   <div className={`automation-chevron${isExpanded ? ' open' : ''}`}>
                     <ChevronDown />
@@ -240,19 +240,19 @@ export function TasksPage() {
                   <div className="automation-description">{a.description}</div>
                   <div className="automation-meta">
                     <div className="meta-item">
-                      <span className="meta-key">Laatste run</span>
+                      <span className="meta-key">Last run</span>
                       <span className="meta-val">{a.lastRun}</span>
                     </div>
                     <div className="meta-item">
-                      <span className="meta-key">Vandaag bespaard</span>
+                      <span className="meta-key">Saved today</span>
                       <span className="meta-val">{formatTime(a.timeSaved.today)}</span>
                     </div>
                     <div className="meta-item">
-                      <span className="meta-key">Deze week</span>
+                      <span className="meta-key">This week</span>
                       <span className="meta-val">{formatTime(a.timeSaved.week)}</span>
                     </div>
                     <div className="meta-item">
-                      <span className="meta-key">Deze maand</span>
+                      <span className="meta-key">This month</span>
                       <span className="meta-val">{formatTime(a.timeSaved.month)}</span>
                     </div>
                   </div>

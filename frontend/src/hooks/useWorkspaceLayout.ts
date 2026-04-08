@@ -1,11 +1,14 @@
+import { useShallow } from 'zustand/react/shallow';
 import { useWorkspaceLayoutStore } from '../stores/workspaceLayoutStore';
 
 export const useWorkspaceLayout = () =>
-  useWorkspaceLayoutStore((s) => ({
-    layout: s.layout,
-    setSplitView: s.setSplitView,
-    closeSplitView: s.closeSplitView,
-  }));
+  useWorkspaceLayoutStore(
+    useShallow((s) => ({
+      layout: s.layout,
+      setSplitView: s.setSplitView,
+      closeSplitView: s.closeSplitView,
+    })),
+  );
 
 export const useIsSplitView = () =>
   useWorkspaceLayoutStore((s) => s.layout === 'split-view');

@@ -16,7 +16,9 @@ import { IntegrationsPage } from './IntegrationsPage';
 import { SkillsPage } from './SkillsPage';
 import { SecretsPanel } from './SecretsPanel';
 import { TasksPage } from './TasksPage';
+import { ProjectsPage } from './ProjectsPage';
 import { PreviewPanel } from './PreviewPanel';
+import { SagesOverlay } from './sages/SagesOverlay';
 import './LandingPage.css';
 
 const DEV_AUTH_BYPASS_ENABLED =
@@ -108,6 +110,8 @@ export function LandingPage() {
       <main className="right-panel">
         {isWorkspace && workspaceView === 'tasks' ? (
           <TasksPage />
+        ) : isWorkspace && workspaceView === 'projects' ? (
+          <ProjectsPage />
         ) : isWorkspace && workspaceView === 'integrations' ? (
           <IntegrationsPage />
         ) : isWorkspace && workspaceView === 'skills' ? (
@@ -121,6 +125,9 @@ export function LandingPage() {
 
       {/* Preview panel — triggered by Arcamatrix via open_split_view event */}
       {showPreview && <PreviewPanel />}
+
+      {/* Sages voice/video call overlay */}
+      <SagesOverlay />
     </div>
   );
 }

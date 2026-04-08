@@ -1,6 +1,6 @@
 /**
- * Mock streamApi — geen backend nodig.
- * Swap terug naar ./streamApi zodra B-04 klaar is.
+ * Mock streamApi — no backend needed.
+ * Swap back to ./streamApi once B-04 is complete.
  */
 import type { DemoSessionResponse, TokenStatusResponse } from './streamApi';
 import { useMessageStore } from '../stores/messageStore';
@@ -11,11 +11,11 @@ const delay = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
 let messageCounter = 0;
 
 const MOCK_REPLIES = [
-  'Ik ben Hermes, jouw AI-assistent binnen Arcamatrix. Wat kan ik voor je doen?',
-  'Goed idee! Ik kan je helpen met planning, code reviews, en brainstormen.',
-  'Laat me daar even over nadenken... Klaar! Hier is mijn analyse van je vraag.',
-  'Ik heb je verzoek verwerkt. Wil je dat ik nog dieper inga op een specifiek onderdeel?',
-  'Interessante vraag. In de context van dit project zou ik aanraden om stap voor stap te werken.',
+  'I am Hermes, your AI assistant within Arcamatrix. What can I do for you?',
+  'Good idea! I can help you with planning, code reviews, and brainstorming.',
+  'Let me think about that... Done! Here is my analysis of your question.',
+  'I have processed your request. Would you like me to dive deeper into a specific part?',
+  'Interesting question. In the context of this project, I would recommend working step by step.',
 ];
 
 function pickReply(userText: string): string {

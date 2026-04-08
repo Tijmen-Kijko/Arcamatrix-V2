@@ -151,15 +151,14 @@ function SkillSection({
 /* ─── Main page ─── */
 
 export function SkillsPage() {
-  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'available'>('all');
+  const [onlyActive, setOnlyActive] = useState(false);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('category');
 
   const filtered = useMemo(() => {
     let list = skills;
 
-    if (activeTab === 'active') list = list.filter((s) => s.status === 'active');
-    if (activeTab === 'available') list = list.filter((s) => s.status !== 'active');
+    if (onlyActive) list = list.filter((s) => s.status === 'active');
 
     if (search) {
       const q = search.toLowerCase();
@@ -175,10 +174,9 @@ export function SkillsPage() {
     if (sort === 'za') list = [...list].sort((a, b) => b.name.localeCompare(a.name));
 
     return list;
-  }, [activeTab, search, sort]);
+  }, [onlyActive, search, sort]);
 
   const activeSkillsCount = skills.filter((s) => s.status === 'active').length;
-  const availableSkillsCount = skills.filter((s) => s.status !== 'active').length;
 
   return (
     <div className="skills-page">
@@ -194,28 +192,6 @@ export function SkillsPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="skills-tabs">
-        <button
-          className={`skills-tab${activeTab === 'all' ? ' active' : ''}`}
-          onClick={() => setActiveTab('all')}
-        >
-          All skills
-        </button>
-        <button
-          className={`skills-tab${activeTab === 'active' ? ' active' : ''}`}
-          onClick={() => setActiveTab('active')}
-        >
-          Active <span className="skills-tab-count">{activeSkillsCount}</span>
-        </button>
-        <button
-          className={`skills-tab${activeTab === 'available' ? ' active' : ''}`}
-          onClick={() => setActiveTab('available')}
-        >
-          Available <span className="skills-tab-count">{availableSkillsCount}</span>
-        </button>
-      </div>
-
       {/* Toolbar */}
       <div className="skills-toolbar">
         <span className="skills-results-count">{filtered.length} skills</span>
@@ -229,6 +205,15 @@ export function SkillsPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <label className="skills-toggle">
+            <input
+              type="checkbox"
+              checked={onlyActive}
+              onChange={(e) => setOnlyActive(e.target.checked)}
+            />
+            <span className="skills-toggle-slider" />
+            <span className="skills-toggle-label">Only active</span>
+          </label>
           <select
             className="skills-sort"
             value={sort}

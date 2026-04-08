@@ -3,7 +3,7 @@ import { create } from 'zustand';
 type AppPhase = 'landing' | 'transitioning' | 'workspace';
 type MorphState = 'send' | 'morphing' | 'cta' | 'reset';
 type SandboxPhase = 'loading' | 'active' | 'budget_warning' | 'promote_prompt' | 'workspace';
-type ActiveView = 'chat' | 'secrets' | 'integrations' | 'skills';
+type ActiveView = 'chat' | 'secrets' | 'integrations' | 'skills' | 'projects';
 
 interface AppState {
   phase: AppPhase;

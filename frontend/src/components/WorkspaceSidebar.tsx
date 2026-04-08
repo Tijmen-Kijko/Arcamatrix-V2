@@ -1,9 +1,15 @@
 import { useState, useCallback } from 'react';
-import { useAppPhase, useActiveView, useSetActiveView } from '../hooks/useAppPhase';
+import { useAppPhase } from '../hooks/useAppPhase';
 import { useAuthSession } from '../hooks/useAuth';
 import { useIsSplitView } from '../hooks/useWorkspaceLayout';
 import { useWorkspaceLayoutStore } from '../stores/workspaceLayoutStore';
+import { useMessageStore } from '../stores/messageStore';
+import { useProjectStore } from '../stores/projectStore';
+import { useProjects } from '../hooks/useProjects';
+import { SettingsModal, type SettingsTab } from './SettingsModal';
 import './WorkspaceSidebar.css';
+
+export type WorkspaceView = 'chat' | 'tasks' | 'integrations' | 'skills' | 'secrets' | 'projects';
 
 /* ─── Collapsible group helper ─── */
 function useToggle(initial = false) {
@@ -74,21 +80,8 @@ const dailyChats = [
   { id: 'dc3', title: 'Agenda sync & planning', date: 'ma' },
 ];
 
-const projects = [
-  {
-    id: 'p1', name: 'SportApp Pro', color: '#5ca85c',
-    chats: [
-      { id: 'pc1', title: 'App wireframe review', date: 'di' },
-      { id: 'pc2', title: 'Database structuur', date: 'ma' },
-    ],
-  },
-  {
-    id: 'p2', name: 'Marketing Q2', color: '#4d8fcc',
-    chats: [
-      { id: 'pc3', title: 'Campagne strategie', date: 'vr' },
-    ],
-  },
-];
+/* Project colors – deterministic based on index */
+const PROJECT_COLORS = ['#5ca85c', '#4d8fcc', '#cc8f4d', '#a85ca8', '#cc4d4d', '#4dcca8'];
 
 /* ─── Sub-components ─── */
 
@@ -99,6 +92,7 @@ function NavGroupHeader({
   onToggle,
   badge,
   addButton,
+  onAdd,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -106,6 +100,7 @@ function NavGroupHeader({
   onToggle: () => void;
   badge?: number;
   addButton?: boolean;
+  onAdd?: () => void;
 }) {
   return (
     <div
@@ -116,7 +111,7 @@ function NavGroupHeader({
       <span className="group-label">{label}</span>
       {badge !== undefined && <span className="group-badge">{badge}</span>}
       {addButton && (
-        <span className="add-btn" onClick={(e) => e.stopPropagation()}>
+        <span className="add-btn" onClick={(e) => { e.stopPropagation(); onAdd?.(); }}>
           {icons.plus(11)}
         </span>
       )}
@@ -125,20 +120,43 @@ function NavGroupHeader({
   );
 }
 
-function ProjectGroup({ project }: { project: typeof projects[number] }) {
+function ProjectGroup({ project, color, onNavigate }: { project: { id: string; name: string }; color: string; onNavigate?: (view: WorkspaceView) => void }) {
   const [open, toggle] = useToggle(false);
   const isSplit = useIsSplitView();
   const setSplitView = useWorkspaceLayoutStore((s) => s.setSplitView);
+  const updatePreview = useWorkspaceLayoutStore((s) => s.updatePreview);
 
   const handlePreview = (e: React.MouseEvent) => {
     e.stopPropagation();
+    onNavigate?.('chat');
+    updatePreview(
+      `<!DOCTYPE html>
+<html lang="nl">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Inter,system-ui,sans-serif;background:#0f0d0b;color:#e8e0d4;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center}
+.wrap{max-width:360px;padding:24px}
+.icon{width:48px;height:48px;margin:0 auto 16px;border-radius:12px;background:${color}22;display:flex;align-items:center;justify-content:center}
+.icon svg{stroke:${color};width:24px;height:24px}
+h2{font-size:15px;font-weight:600;margin-bottom:6px;color:#e8e0d4}
+p{font-size:13px;color:#8a7e6e;line-height:1.5}
+.tag{display:inline-block;margin-top:14px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:500;background:${color}18;color:${color}}
+</style></head>
+<body><div class="wrap">
+<div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></div>
+<h2>${project.name}</h2>
+<p>Preview klaar — zodra Arcamatrix output genereert verschijnt de live preview hier.</p>
+<span class="tag">Wacht op build…</span>
+</div></body></html>`
+    );
     setSplitView();
   };
 
   return (
     <div className="project-group">
       <div className={`project-header${open ? ' open' : ''}`} onClick={toggle}>
-        <div className="proj-dot" style={{ background: project.color }} />
+        <div className="proj-dot" style={{ background: color }} />
         <span className="proj-name">{project.name}</span>
         {!isSplit && (
           <span className="proj-preview-btn" onClick={handlePreview} title="Open preview">
@@ -151,16 +169,12 @@ function ProjectGroup({ project }: { project: typeof projects[number] }) {
         <span className="chevron">{icons.chevron(11)}</span>
       </div>
       <div className={`project-body${open ? ' open' : ''}`}>
-        <div className="sub-item project-sub">{icons.list} Tasks</div>
+        <div className="sub-item project-sub" onClick={(e) => {
+          e.stopPropagation();
+          useProjectStore.getState().setActiveProject(project.id);
+          onNavigate?.('projects');
+        }}>{icons.list} Task Board</div>
         <div className="sub-item project-sub">{icons.file} Files</div>
-        <div className="chat-history-label project-chat">Chats</div>
-        {project.chats.map((c) => (
-          <div key={c.id} className="chat-item project-chat" style={{ paddingLeft: 36 }}>
-            {icons.chat}
-            <span className="chat-title">{c.title}</span>
-            <span className="chat-date">{c.date}</span>
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -168,16 +182,28 @@ function ProjectGroup({ project }: { project: typeof projects[number] }) {
 
 /* ─── Main component ─── */
 
-export type WorkspaceView = 'chat' | 'tasks' | 'integrations' | 'skills' | 'secrets';
-
 export function WorkspaceSidebar({ activeView, onNavigate }: { activeView?: WorkspaceView; onNavigate?: (view: WorkspaceView) => void }) {
   const phase = useAppPhase();
   const authSession = useAuthSession();
+  const storeProjects = useProjects();
   const [toolsOpen, toggleTools] = useToggle(false);
   const [dailyOpen, toggleDaily] = useToggle(true);
   const [projectsOpen, toggleProjects] = useToggle(false);
 
   const [footerOpen, setFooterOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>('account');
+  const { clearMessages, addMessage } = useMessageStore();
+
+  const handleAddProject = useCallback(() => {
+    clearMessages();
+    addMessage({
+      id: `project-init-${Date.now()}`,
+      type: 'ai-text',
+      text: 'Wat voor soort project zou je willen starten?',
+    });
+    onNavigate?.('chat');
+  }, [clearMessages, addMessage, onNavigate]);
 
   const userName = authSession?.user.display_name ?? 'User';
   const userInitials = userName
@@ -229,10 +255,19 @@ export function WorkspaceSidebar({ activeView, onNavigate }: { activeView?: Work
 
         {/* Projects */}
         <div className="nav-group">
-          <NavGroupHeader icon={icons.folder} label="Projects" open={projectsOpen} onToggle={toggleProjects} addButton />
+          <NavGroupHeader icon={icons.folder} label="Projects" open={projectsOpen} onToggle={toggleProjects} addButton onAdd={handleAddProject} />
           <div className={`nav-group-body${projectsOpen ? ' open' : ''}`}>
-            {projects.map((p) => (
-              <ProjectGroup key={p.id} project={p} />
+            <div
+              className={`sub-item${activeView === 'projects' ? ' active' : ''}`}
+              onClick={() => {
+                useProjectStore.getState().setActiveProject(null);
+                onNavigate?.('projects');
+              }}
+            >
+              {icons.list} All Projects
+            </div>
+            {storeProjects.map((p, i) => (
+              <ProjectGroup key={p.id} project={p} color={PROJECT_COLORS[i % PROJECT_COLORS.length]} onNavigate={onNavigate} />
             ))}
           </div>
         </div>
@@ -280,11 +315,17 @@ export function WorkspaceSidebar({ activeView, onNavigate }: { activeView?: Work
           <span className={`chevron${footerOpen ? ' open' : ''}`}>{icons.chevron()}</span>
         </div>
         <div className={`footer-menu${footerOpen ? ' open' : ''}`}>
-          <div className="footer-link">{icons.user} Account &amp; Billing</div>
-          <div className="footer-link">{icons.link} API</div>
+          <div className="footer-link" onClick={() => { setSettingsTab('account'); setSettingsOpen(true); }}>{icons.user} Account &amp; Billing</div>
+          <div className="footer-link" onClick={() => { setSettingsTab('api'); setSettingsOpen(true); }}>{icons.link} API</div>
           <div className="footer-link danger">{icons.logout} Log out</div>
         </div>
       </div>
+
+      <SettingsModal
+        open={settingsOpen}
+        initialTab={settingsTab}
+        onClose={() => setSettingsOpen(false)}
+      />
     </aside>
   );
 }
