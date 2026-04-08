@@ -1,0 +1,232 @@
+/* ═══════════════════════════════════════
+   PREVIEW PANEL — right side of workspace
+   F-11 "Bouw modus" split view
+═══════════════════════════════════════ */
+.preview-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  height: 100vh;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ── Toolbar ──────────────────────── */
+.preview-toolbar {
+  height: 48px;
+  min-height: 48px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.preview-tool-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--ease), color var(--ease);
+}
+.preview-tool-btn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* Close button — subtle danger hover */
+.preview-close-btn {
+  margin-left: 2px;
+}
+.preview-close-btn:hover {
+  background: rgba(192, 97, 74, 0.12);
+  color: #c0614a;
+}
+
+/* ── URL bar ──────────────────────── */
+.preview-url-bar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  padding: 0 12px;
+  height: 30px;
+  min-width: 0;
+}
+
+.preview-url-prefix {
+  color: var(--faint);
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.preview-url-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-width: 0;
+}
+
+/* ── Device toggle ────────────────── */
+.preview-device-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.preview-device-btn {
+  width: 28px;
+  height: 26px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease);
+}
+.preview-device-btn:hover {
+  color: var(--muted);
+}
+.preview-device-btn.active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* ── Viewport ─────────────────────── */
+.preview-viewport {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--surface);
+  position: relative;
+}
+
+.preview-iframe-wrap {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transition: width 400ms var(--ease-smooth), height 400ms var(--ease-smooth);
+}
+
+/* Device modes */
+.preview-viewport.device-desktop .preview-iframe-wrap {
+  width: 100%;
+  height: 100%;
+}
+
+.preview-viewport.device-tablet .preview-iframe-wrap {
+  width: 768px;
+  max-width: 100%;
+  height: 100%;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+.preview-viewport.device-mobile .preview-iframe-wrap {
+  width: 375px;
+  max-width: 100%;
+  height: 100%;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+/* ── Iframe ───────────────────────── */
+.preview-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
+}
+
+/* ── Skeleton loader ─────────────── */
+.preview-skeleton {
+  position: absolute;
+  inset: 0;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  z-index: 1;
+}
+
+.skeleton-bar {
+  height: 14px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-bar-lg { width: 65%; }
+.skeleton-bar-md { width: 45%; }
+.skeleton-bar-sm { width: 30%; }
+
+.skeleton-block {
+  height: 120px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  animation: skeleton-pulse 1.5s ease-in-out infinite 0.2s;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+/* ── Empty state ──────────────────── */
+.preview-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--surface);
+  z-index: 2;
+}
+
+.preview-empty-icon {
+  color: var(--faint);
+  margin-bottom: 4px;
+}
+
+.preview-empty-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.preview-empty-sub {
+  font-size: 12.5px;
+  color: var(--faint);
+  text-align: center;
+  max-width: 260px;
+  line-height: 1.5;
+}

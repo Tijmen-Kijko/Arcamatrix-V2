@@ -17,19 +17,23 @@ export function WorkspaceWindow({ label = 'ARCAMATRIX WORKSPACE', children }: Wo
       </div>
 
       <div className={`ws-window ${isWorkspace ? 'full' : ''}`}>
-        <div className="ws-titlebar">
-          {!isWorkspace && (
-            <>
-              <div className="ws-dot" style={{ background: '#ff5f57' }} />
-              <div className="ws-dot" style={{ background: '#ffbd2e' }} />
-              <div className="ws-dot" style={{ background: '#28c840' }} />
-            </>
-          )}
-          <div className="ws-title">
-            {isWorkspace ? 'Chat · Arcamatrix' : 'workspace · arcamatrix.com'}
+        {isWorkspace ? (
+          <div className="chat-header">
+            <div className="chat-header-title">Arcamatrix</div>
+            <div className="project-chip">
+              <div className="project-chip-dot" />
+              Daily Tasks
+            </div>
           </div>
-          {!isWorkspace && <div className="ws-title-spacer" />}
-        </div>
+        ) : (
+          <div className="ws-titlebar">
+            <div className="ws-dot" style={{ background: '#ff5f57' }} />
+            <div className="ws-dot" style={{ background: '#ffbd2e' }} />
+            <div className="ws-dot" style={{ background: '#28c840' }} />
+            <div className="ws-title">workspace · arcamatrix.com</div>
+            <div className="ws-title-spacer" />
+          </div>
+        )}
 
         {children}
       </div>

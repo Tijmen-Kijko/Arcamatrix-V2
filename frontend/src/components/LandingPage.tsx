@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppPhase, useSetAppPhase } from '../hooks/useAppPhase';
 import {
   useAuthStatus,
@@ -8,9 +8,15 @@ import {
   useStartMagicLink,
   useVerifyMagicLink,
 } from '../hooks/useAuth';
+import { useIsSplitView } from '../hooks/useWorkspaceLayout';
 import { SignupPanel } from './SignupPanel';
 import { SandboxWorkspace } from './SandboxWorkspace';
-import { WorkspaceSidebar } from './WorkspaceSidebar';
+import { WorkspaceSidebar, type WorkspaceView } from './WorkspaceSidebar';
+import { IntegrationsPage } from './IntegrationsPage';
+import { SkillsPage } from './SkillsPage';
+import { SecretsPanel } from './SecretsPanel';
+import { TasksPage } from './TasksPage';
+import { PreviewPanel } from './PreviewPanel';
 import './LandingPage.css';
 
 const DEV_AUTH_BYPASS_ENABLED =
@@ -67,26 +73,54 @@ export function LandingPage() {
     await verifyMagicLink();
   };
 
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('chat');
+
+  const isSplitView = useIsSplitView();
+  const isWorkspace = phase === 'workspace';
+  const isTransitioning = phase === 'transitioning';
+  const showPreview = isWorkspace && workspaceView === 'chat' && isSplitView;
+
   const className = [
     'landing-layout',
-    phase === 'transitioning' ? 'transitioning' : '',
-    phase === 'workspace' ? 'ws-mode' : '',
+    isTransitioning ? 'transitioning' : '',
+    isWorkspace ? 'ws-mode' : '',
+    showPreview ? 'split-view' : '',
   ]
     .filter(Boolean)
     .join(' ');
 
   return (
     <div className={className}>
-      <aside className="left-panel">
-        <SignupPanel
-          onSignup={handleSignup}
-          onVerifyMagicLink={handleVerifyMagicLink}
-        />
-        <WorkspaceSidebar />
-      </aside>
+      {/* Pre-login: signup panel as left panel */}
+      {!isWorkspace && (
+        <aside className="left-panel">
+          <SignupPanel
+            onSignup={handleSignup}
+            onVerifyMagicLink={handleVerifyMagicLink}
+          />
+        </aside>
+      )}
+
+      {/* Post-login: sidebar */}
+      <WorkspaceSidebar activeView={workspaceView} onNavigate={setWorkspaceView} />
+
+      {/* Main content */}
       <main className="right-panel">
-        <SandboxWorkspace />
+        {isWorkspace && workspaceView === 'tasks' ? (
+          <TasksPage />
+        ) : isWorkspace && workspaceView === 'integrations' ? (
+          <IntegrationsPage />
+        ) : isWorkspace && workspaceView === 'skills' ? (
+          <SkillsPage />
+        ) : isWorkspace && workspaceView === 'secrets' ? (
+          <SecretsPanel />
+        ) : (
+          <SandboxWorkspace />
+        )}
       </main>
+
+      {/* Preview panel — triggered by Arcamatrix via open_split_view event */}
+      {showPreview && <PreviewPanel />}
     </div>
   );
 }

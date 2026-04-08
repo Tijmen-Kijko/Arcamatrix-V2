@@ -7,7 +7,7 @@
   height: 100vh;
 }
 
-/* ── Left panel ─────────────────────── */
+/* ── Left panel (signup, pre-login) ─── */
 .left-panel {
   width: var(--left-w);
   min-width: var(--left-w);
@@ -53,36 +53,77 @@
    TRANSITION STATES
 ═══════════════════════════════════════ */
 
-/* .transitioning: signup fades, width starts changing */
+/* .transitioning: signup fades */
 .landing-layout.transitioning .signup-view {
   opacity: 0;
   pointer-events: none;
 }
 
-/* .ws-mode: sidebar visible, window goes full */
-.landing-layout.ws-mode .left-panel {
-  width: var(--sidebar-w);
-  min-width: var(--sidebar-w);
-}
-
+/* .ws-mode: sidebar visible, workspace goes full */
 .landing-layout.ws-mode .right-panel {
   padding: 0;
   align-items: stretch;
   justify-content: stretch;
+  transition:
+    padding 750ms var(--ease-smooth),
+    flex 480ms var(--ease-smooth),
+    min-width 480ms var(--ease-smooth);
 }
 
 .landing-layout.ws-mode .right-panel::before {
   opacity: 0;
 }
 
-.landing-layout.ws-mode .sidebar-view {
-  opacity: 1;
-  pointer-events: all;
+/* ═══════════════════════════════════════
+   SPLIT VIEW — F-11 "Bouw modus"
+   3-phase transition:
+     Fase 1: chat krimpt (480ms)
+     Fase 2: preview schuift in (520ms, delay 200ms)
+     Fase 3: toolbar fade-in (300ms, delay 500ms)
+═══════════════════════════════════════ */
+
+/* Fase 1 — Chat panel krimpt naar sidebar-breedte */
+.landing-layout.split-view .right-panel {
+  flex: 0 0 280px;
+  min-width: 280px;
+  max-width: 400px;
+  border-right: 1px solid var(--border);
+  resize: horizontal;
+  overflow: hidden;
 }
 
-.landing-layout.ws-mode .signup-view {
-  opacity: 0;
-  pointer-events: none;
+/* Fase 2 — Preview schuift in */
+.landing-layout.split-view .preview-panel {
+  animation: slide-in-preview 520ms var(--ease-smooth) 200ms both;
+}
+
+@keyframes slide-in-preview {
+  from {
+    opacity: 0;
+    flex: 0 0 0px;
+    min-width: 0;
+  }
+  to {
+    opacity: 1;
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Fase 3 — Toolbar fade-in */
+.landing-layout.split-view .preview-toolbar {
+  animation: fade-in-toolbar 300ms ease 500ms both;
+}
+
+@keyframes fade-in-toolbar {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -94,6 +135,7 @@
   box-shadow: none;
   max-width: 100%;
   max-height: 100vh;
+  height: 100vh;
 }
 
 .landing-layout.ws-mode .ws-label {

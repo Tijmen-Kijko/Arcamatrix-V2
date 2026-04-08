@@ -8,3 +8,6 @@ export const useSetMorphState = () => useAppStore((s) => s.setMorphState);
 
 export const useSandboxPhase = () => useAppStore((s) => s.sandboxPhase);
 export const useSetSandboxPhase = () => useAppStore((s) => s.setSandboxPhase);
+
+export const useActiveView = () => useAppStore((s) => s.activeView);
+export const useSetActiveView = () => useAppStore((s) => s.setActiveView);

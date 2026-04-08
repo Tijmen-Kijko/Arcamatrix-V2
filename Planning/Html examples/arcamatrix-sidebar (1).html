@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcamatrix — Sidebar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+:root {
+  --bg:           #0d0c0b;
+  --sidebar-bg:   #111110;
+  --surface:      #161513;
+  --surface-2:    #1e1c1a;
+  --surface-3:    #272421;
+  --hover:        #1a1917;
+  --active:       #201f1d;
+  --border:       rgba(255,255,255,0.07);
+  --border-soft:  rgba(255,255,255,0.04);
+  --text:         #e9e7e4;
+  --muted:        #79776f;
+  --faint:        #3e3c39;
+  --green:        #4ade80;
+  --green-bg:     rgba(74,222,128,0.08);
+  --radius-sm:    4px;
+  --radius-md:    6px;
+  --radius-lg:    8px;
+  --ease:         180ms cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-slow:    280ms cubic-bezier(0.16, 1, 0.3, 1);
+  --font:         'Inter', -apple-system, sans-serif;
+}
+
+body {
+  font-family: var(--font);
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+  line-height: 1.5;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: 234px;
+  min-width: 234px;
+  height: 100vh;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 14px 12px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.workspace-avatar {
+  width: 28px; height: 28px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; color: var(--text); flex-shrink: 0;
+  letter-spacing: -0.3px;
+}
+.workspace-name { display: block; font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.workspace-sub  { display: block; font-size: 11px; color: var(--faint); }
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0 4px;
+  scrollbar-width: none;
+}
+.sidebar-nav::-webkit-scrollbar { display: none; }
+
+/* ─── NEW CHAT ─── */
+.new-chat-btn {
+  display: flex; align-items: center; gap: 7px;
+  width: calc(100% - 16px); margin: 0 8px 6px;
+  padding: 7px 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  font-size: 12.5px; font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--ease), border-color var(--ease), color var(--ease);
+}
+.new-chat-btn:hover { background: var(--hover); border-color: rgba(255,255,255,0.1); color: var(--text); }
+
+/* ─── NAV ITEM ─── */
+.nav-item {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 10px 6px 12px;
+  margin: 0 4px;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease);
+  user-select: none;
+  font-size: 12.5px;
+}
+.nav-item:hover { background: var(--hover); color: var(--text); }
+.nav-item.active { background: var(--active); color: var(--text); }
+.nav-item svg { flex-shrink: 0; opacity: 0.6; }
+.nav-item:hover svg, .nav-item.active svg { opacity: 1; }
+.nav-item .item-label { flex: 1; }
+
+/* ─── GROUP HEADER ─── */
+.nav-group-header {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 10px 6px 12px;
+  margin: 0 4px;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease);
+  user-select: none;
+  font-size: 12.5px;
+}
+.nav-group-header:hover { background: var(--hover); color: var(--text); }
+.nav-group-header.open { color: var(--text); }
+.nav-group-header svg.group-icon { flex-shrink: 0; opacity: 0.6; }
+.nav-group-header.open svg.group-icon { opacity: 1; }
+.nav-group-header .group-label { flex: 1; }
+.nav-group-header .chevron { flex-shrink: 0; opacity: 0.4; transition: transform var(--ease-slow), opacity var(--ease); }
+.nav-group-header.open .chevron { transform: rotate(90deg); opacity: 0.6; }
+.nav-group-header:hover .chevron { opacity: 0.7; }
+
+.add-btn {
+  width: 18px; height: 18px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--faint);
+  transition: background var(--ease), color var(--ease);
+}
+.add-btn:hover { background: var(--surface-3); color: var(--text); }
+
+.nav-group-body {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height var(--ease-slow);
+}
+.nav-group-body.open { max-height: 600px; }
+
+/* ─── SUB ITEM ─── */
+.sub-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px 5px 30px;
+  margin: 0 4px;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  transition: background var(--ease), color var(--ease);
+  user-select: none;
+}
+.sub-item:hover { background: var(--hover); color: var(--text); }
+.sub-item.active { background: var(--active); color: var(--text); }
+.sub-item svg { flex-shrink: 0; opacity: 0.6; }
+.sub-item:hover svg, .sub-item.active svg { opacity: 1; }
+
+/* ─── CHAT ITEMS ─── */
+.chat-history-label {
+  padding: 5px 10px 2px 30px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--faint);
+}
+.chat-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 30px;
+  margin: 0 4px;
+  border-radius: var(--radius-md);
+  color: var(--faint);
+  cursor: pointer; font-size: 11.5px;
+  transition: background var(--ease), color var(--ease);
+  user-select: none;
+}
+.chat-item:hover { background: var(--hover); color: var(--muted); }
+.chat-item.active { background: var(--active); color: var(--text); }
+.chat-item .chat-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-item .chat-date { font-size: 10px; color: var(--faint); flex-shrink: 0; }
+
+/* ─── PROJECTS ─── */
+.project-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px 5px 22px;
+  margin: 0 4px;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  cursor: pointer; font-size: 12px;
+  transition: background var(--ease), color var(--ease);
+  user-select: none;
+}
+.project-header:hover { background: var(--hover); color: var(--text); }
+.project-header.open { color: var(--text); }
+.project-header .proj-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.project-header .proj-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.project-header .chevron { flex-shrink: 0; opacity: 0.4; transition: transform var(--ease-slow); }
+.project-header.open .chevron { transform: rotate(90deg); opacity: 0.6; }
+.project-body { overflow: hidden; max-height: 0; transition: max-height var(--ease-slow); }
+.project-body.open { max-height: 400px; }
+.project-sub { padding-left: 36px; }
+.project-chat { padding-left: 36px; }
+
+/* ─── CHANNELS ─── */
+.channel-item {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 10px 5px 30px;
+  margin: 0 4px;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  cursor: pointer; font-size: 12px;
+  transition: background var(--ease), color var(--ease);
+}
+.channel-item:hover { background: var(--hover); color: var(--text); }
+.channel-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* ─── DIVIDER ─── */
+.nav-divider { height: 1px; background: var(--border); margin: 5px 12px; }
+
+/* ─── FOOTER ─── */
+.sidebar-footer {
+  border-top: 1px solid var(--border);
+  padding: 6px 0 8px;
+}
+.footer-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px 6px 12px;
+  margin: 0 4px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease);
+  user-select: none; font-size: 12.5px; color: var(--muted);
+}
+.footer-item:hover { background: var(--hover); color: var(--text); }
+.user-avatar {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--surface-2); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 600; color: var(--muted); flex-shrink: 0;
+}
+.footer-item .user-name { flex: 1; font-size: 12px; }
+.footer-menu { overflow: hidden; max-height: 0; transition: max-height var(--ease-slow); }
+.footer-menu.open { max-height: 200px; }
+.footer-link {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 10px 5px 30px;
+  margin: 0 4px;
+  border-radius: var(--radius-md);
+  color: var(--muted); cursor: pointer; font-size: 12px;
+  transition: background var(--ease), color var(--ease);
+}
+.footer-link:hover { background: var(--hover); color: var(--text); }
+.footer-link.danger { color: #c0614a; }
+.footer-link.danger:hover { background: rgba(192,97,74,0.08); color: #c0614a; }
+.footer-link svg { flex-shrink: 0; opacity: 0.6; }
+
+/* ─── MAIN ─── */
+.main {
+  flex: 1; display: flex; flex-direction: column;
+  background: var(--bg); overflow: hidden;
+}
+.chat-header {
+  height: 48px; min-height: 48px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 20px; gap: 10px;
+}
+.chat-header-title { font-size: 13px; font-weight: 500; color: var(--text); }
+.project-chip {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 8px;
+  background: var(--surface); border-radius: 9999px;
+  font-size: 11px; color: var(--muted);
+  border: 1px solid var(--border);
+}
+.project-chip-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); }
+
+.chat-messages {
+  flex: 1; overflow-y: auto; padding: 24px 0;
+  scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent;
+}
+.msg-row { display: flex; gap: 12px; padding: 6px 24px; max-width: 760px; margin: 0 auto; width: 100%; }
+.msg-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--surface-2); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+  color: var(--muted);
+}
+.msg-content { flex: 1; min-width: 0; }
+.msg-name { font-size: 11px; font-weight: 600; margin-bottom: 3px; color: var(--muted); }
+.msg-bubble { font-size: 13px; line-height: 1.6; color: var(--text); }
+.msg-bubble p { margin-bottom: 6px; }
+.msg-bubble p:last-child { margin-bottom: 0; }
+
+.status-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; background: var(--green-bg);
+  border-radius: 9999px; font-size: 11px; color: var(--green); margin-bottom: 6px;
+}
+.status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+.action-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.action-pill {
+  padding: 4px 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 9999px; font-size: 11.5px; color: var(--muted);
+  cursor: pointer; transition: background var(--ease), color var(--ease), border-color var(--ease);
+}
+.action-pill:hover { background: var(--surface-2); color: var(--text); border-color: rgba(255,255,255,0.1); }
+
+.budget-bar-wrap { padding: 0 24px; max-width: 760px; margin: 0 auto; width: 100%; }
+.budget-bar-row { display: flex; justify-content: space-between; font-size: 10px; color: var(--faint); margin-bottom: 4px; }
+.budget-track { height: 2px; background: var(--surface-3); border-radius: 9999px; overflow: hidden; }
+.budget-fill  { height: 100%; background: rgba(255,255,255,0.2); width: 1.6%; border-radius: 9999px; }
+
+.chat-input-area { padding: 12px 24px 16px; max-width: 760px; margin: 0 auto; width: 100%; }
+.chat-input-wrap {
+  display: flex; align-items: flex-end; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 10px 12px;
+  transition: border-color var(--ease);
+}
+.chat-input-wrap:focus-within { border-color: rgba(255,255,255,0.15); }
+.chat-input {
+  flex: 1; background: none; border: none; outline: none;
+  color: var(--text); font-size: 13px; font-family: var(--font);
+  resize: none; min-height: 20px; max-height: 120px; line-height: 1.5;
+}
+.chat-input::placeholder { color: var(--faint); }
+.send-btn {
+  width: 28px; height: 28px; border-radius: var(--radius-md);
+  background: var(--text); color: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  transition: opacity var(--ease);
+}
+.send-btn:hover { opacity: 0.85; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 9999px; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="workspace-avatar">A</div>
+    <div>
+      <span class="workspace-name">Arcamatrix</span>
+      <span class="workspace-sub">My Workspace</span>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+
+    <!-- NEW CHAT -->
+    <div style="padding: 6px 8px 2px;">
+      <button class="new-chat-btn" onclick="startNewChat()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        New chat
+      </button>
+    </div>
+
+    <!-- TOOLS -->
+    <div class="nav-group">
+      <div class="nav-group-header" onclick="toggle(this)">
+        <svg class="group-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        <span class="group-label">Tools</span>
+        <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="nav-group-body">
+        <div class="sub-item" onclick="setActive(this)">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          Integrations
+        </div>
+        <div class="sub-item" onclick="setActive(this)">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Skills
+        </div>
+      </div>
+    </div>
+
+    <!-- SECRETS -->
+    <div class="nav-item" onclick="setActive(this)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <span class="item-label">Secrets</span>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <!-- DAILY TASKS -->
+    <div class="nav-group">
+      <div class="nav-group-header open" onclick="toggle(this)">
+        <svg class="group-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
+        <span class="group-label">Daily Tasks</span>
+        <span style="margin-left:auto;background:var(--surface-3);color:var(--muted);font-size:10px;padding:1px 5px;border-radius:9999px;font-weight:500;flex-shrink:0;">3</span>
+        <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transform:rotate(90deg);opacity:0.6;margin-left:4px;"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="nav-group-body open">
+        <div class="sub-item" onclick="setActive(this)">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          Tasks
+        </div>
+        <div class="sub-item" onclick="setActive(this)">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+          Files
+        </div>
+        <div class="chat-history-label">Chats</div>
+        <div class="chat-item active" onclick="setActive(this)">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span class="chat-title">Email automation setup</span>
+          <span class="chat-date">nu</span>
+        </div>
+        <div class="chat-item" onclick="setActive(this)">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span class="chat-title">Weekly report draft</span>
+          <span class="chat-date">gis</span>
+        </div>
+        <div class="chat-item" onclick="setActive(this)">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span class="chat-title">Agenda sync & planning</span>
+          <span class="chat-date">ma</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <!-- PROJECTS -->
+    <div class="nav-group">
+      <div class="nav-group-header" onclick="toggle(this)">
+        <svg class="group-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span class="group-label">Projects</span>
+        <div class="add-btn" onclick="addProject(event)" title="Nieuw project">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+        <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="nav-group-body">
+        <div class="project-group">
+          <div class="project-header" onclick="toggleProject(this)">
+            <div class="proj-dot" style="background:#5ca85c;"></div>
+            <span class="proj-name">SportApp Pro</span>
+            <svg class="chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+          <div class="project-body">
+            <div class="sub-item project-sub" onclick="setActive(this)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              Tasks
+            </div>
+            <div class="sub-item project-sub" onclick="setActive(this)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+              Files
+            </div>
+            <div class="chat-history-label project-chat">Chats</div>
+            <div class="chat-item project-chat" style="padding-left:36px;" onclick="setActive(this)">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span class="chat-title">App wireframe review</span>
+              <span class="chat-date">di</span>
+            </div>
+            <div class="chat-item project-chat" style="padding-left:36px;" onclick="setActive(this)">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span class="chat-title">Database structuur</span>
+              <span class="chat-date">ma</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="project-group">
+          <div class="project-header" onclick="toggleProject(this)">
+            <div class="proj-dot" style="background:#4d8fcc;"></div>
+            <span class="proj-name">Marketing Q2</span>
+            <svg class="chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+          <div class="project-body">
+            <div class="sub-item project-sub" onclick="setActive(this)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              Tasks
+            </div>
+            <div class="sub-item project-sub" onclick="setActive(this)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+              Files
+            </div>
+            <div class="chat-history-label project-chat">Chats</div>
+            <div class="chat-item project-chat" style="padding-left:36px;" onclick="setActive(this)">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span class="chat-title">Campagne strategie</span>
+              <span class="chat-date">vr</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <!-- CHANNELS -->
+    <div class="nav-group">
+      <div class="nav-group-header" onclick="toggle(this)">
+        <svg class="group-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.37 2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.44a16 16 0 0 0 5.61 5.61l.5-.96a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        <span class="group-label">Channels</span>
+        <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="nav-group-body">
+        <div class="channel-item">
+          <div class="channel-dot" style="background:#4ade80;box-shadow:0 0 0 2px rgba(74,222,128,0.15);"></div>
+          Continue on WhatsApp
+        </div>
+        <div class="channel-item">
+          <div class="channel-dot" style="background:#4d8fcc;box-shadow:0 0 0 2px rgba(77,143,204,0.15);"></div>
+          Continue on Telegram
+        </div>
+      </div>
+    </div>
+
+  </nav>
+
+  <!-- FOOTER -->
+  <div class="sidebar-footer">
+    <div class="footer-item" onclick="toggleFooter(this)">
+      <div class="user-avatar">JD</div>
+      <span class="user-name">Jan de Vries</span>
+      <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;opacity:0.4;transition:transform 180ms cubic-bezier(0.16,1,0.3,1)"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+    <div class="footer-menu" id="footerMenu">
+      <div class="footer-link">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Account &amp; Billing
+      </div>
+      <div class="footer-link">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        API
+      </div>
+      <div class="footer-link danger">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Log out
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="chat-header">
+    <div class="chat-header-title">Arcamatrix</div>
+    <div class="project-chip">
+      <div class="project-chip-dot"></div>
+      Daily Tasks
+    </div>
+  </div>
+
+  <div class="chat-messages">
+    <div class="msg-row">
+      <div class="msg-avatar">A</div>
+      <div class="msg-content">
+        <div class="msg-name">Arcamatrix</div>
+        <div class="msg-bubble">
+          <div class="status-pill"><div class="status-dot"></div>Verbonden</div>
+          <p>Goedemorgen! Ik heb je inbox gecheckt — er zijn <strong>3 e-mails die aandacht nodig hebben</strong>. Wil je dat ik ze afhandel, of heb je andere prioriteiten?</p>
+        </div>
+        <div class="action-pills">
+          <div class="action-pill">E-mails afhandelen ✉️</div>
+          <div class="action-pill">Agenda bekijken 📅</div>
+          <div class="action-pill">Nieuwe taak instellen ⚡</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="msg-row" style="margin-top:12px;">
+      <div class="msg-avatar">J</div>
+      <div class="msg-content">
+        <div class="msg-name">Jij</div>
+        <div class="msg-bubble">
+          <p>Ja, stuur de standaard wekelijkse update maar door naar het team. En maak ook een automation voor elke maandag ochtend 8:00.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="msg-row" style="margin-top:12px;">
+      <div class="msg-avatar">A</div>
+      <div class="msg-content">
+        <div class="msg-name">Arcamatrix</div>
+        <div class="msg-bubble">
+          <p>✅ <strong>Wekelijkse update verzonden</strong> naar 6 teamleden.</p>
+          <p>⚡ <strong>Automation aangemaakt:</strong> elke maandag om 08:00 stuur ik automatisch de wekelijkse update. Je kunt dit aanpassen via Tasks.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="budget-bar-wrap">
+    <div class="budget-bar-row">
+      <span>Sandbox budget</span>
+      <span>42 / 5.000 — One-time trial budget</span>
+    </div>
+    <div class="budget-track"><div class="budget-fill"></div></div>
+  </div>
+
+  <div class="chat-input-area">
+    <div class="chat-input-wrap">
+      <textarea class="chat-input" placeholder="Stel een vraag of geef een opdracht..." rows="1" oninput="autoResize(this)"></textarea>
+      <div class="send-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+function toggle(header) {
+  const body = header.nextElementSibling;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  header.classList.toggle('open', !isOpen);
+}
+function toggleProject(header) {
+  const body = header.nextElementSibling;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  header.classList.toggle('open', !isOpen);
+}
+function toggleFooter(item) {
+  const menu = document.getElementById('footerMenu');
+  const chevron = item.querySelector('.chevron');
+  const isOpen = menu.classList.contains('open');
+  menu.classList.toggle('open', !isOpen);
+  item.classList.toggle('open', !isOpen);
+  if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
+}
+function setActive(el) {
+  document.querySelectorAll('.nav-item.active,.sub-item.active,.chat-item.active,.footer-link.active')
+    .forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+}
+function startNewChat() {
+  const msgs = document.querySelector('.chat-messages');
+  const row = document.createElement('div');
+  row.className = 'msg-row';
+  row.style.marginTop = '12px';
+  row.innerHTML = `
+    <div class="msg-avatar">A</div>
+    <div class="msg-content">
+      <div class="msg-name">Arcamatrix</div>
+      <div class="msg-bubble">
+        <div class="status-pill"><div class="status-dot"></div>Nieuwe sessie</div>
+        <p>Nieuwe chatsessie gestart. Wat kan ik voor je doen?</p>
+      </div>
+    </div>`;
+  msgs.appendChild(row);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+function addProject(e) {
+  e.stopPropagation();
+  const parent = e.currentTarget.closest('.nav-group');
+  const body = parent.querySelector('.nav-group-body');
+  const header = parent.querySelector('.nav-group-header');
+  body.classList.add('open'); header.classList.add('open');
+  const name = prompt('Projectnaam:');
+  if (!name) return;
+  const colors = ['#e8824a','#a86fdf','#dd6974','#e8af34','#5ca85c','#4d8fcc'];
+  const color = colors[Math.floor(Math.random()*colors.length)];
+  const pg = document.createElement('div');
+  pg.className = 'project-group';
+  pg.innerHTML = `
+    <div class="project-header" onclick="toggleProject(this)">
+      <div class="proj-dot" style="background:${color};"></div>
+      <span class="proj-name">${name}</span>
+      <svg class="chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+    <div class="project-body">
+      <div class="sub-item project-sub" onclick="setActive(this)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Tasks
+      </div>
+      <div class="sub-item project-sub" onclick="setActive(this)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+        Files
+      </div>
+      <div class="chat-history-label project-chat">Chats</div>
+      <div class="chat-item project-chat" style="padding-left:36px;color:var(--faint);font-style:italic;font-size:11px;">Nog geen chats</div>
+    </div>`;
+  body.appendChild(pg);
+}
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+</script>
+</body>
+</html>

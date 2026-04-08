@@ -1,6 +1,6 @@
 # Arcamatrix — Masterplan
-**Landing page · Free account onboarding · Brain modules · Visitor Sandbox**
-*Stack: React · Mastra (TypeScript) · Hermes Agent (Python) | Bijgewerkt: 7 april 2026*
+**Landing page · Free account onboarding · Visitor Sandbox · Workspace**
+*Stack: React · Mastra (TypeScript) · Hermes Agent (Python) | Bijgewerkt: 8 april 2026*
 
 ---
 
@@ -22,9 +22,52 @@
 [LLM Provider]  →  OpenRouter / OpenAI / Anthropic (model-agnostisch)
 ```
 
-**Hermes** (30k stars, v0.7.0, MIT) is de daadwerkelijke agent-engine: 40+ tools, zelfverbeterend skills-systeem, persistent memory per gebruiker, ingebouwde cron-scheduler, en een gateway voor Telegram/WhatsApp/Discord. Het is 93% Python en draait als zelfstandige service.
+**Hermes** (30k stars, v0.7.0, MIT) is de daadwerkelijke agent-engine: 40+ tools, zelfverbeterend skills-systeem, persistent memory per gebruiker, ingebouwde cron-scheduler, en een gateway voor Telegram/WhatsApp/Discord.
 
 **Mastra** is de TypeScript-brug: beheert auth, user-sessions, sandbox lifecycle, API-endpoints, en orkestreert wanneer Hermes wordt aangeroepen.
+
+---
+
+## Sidebar-structuur — Definitief (8 april 2026)
+
+```
+┌─ New chat                          ← altijd zichtbaar, bovenaan
+├─ Tools ▾                           ← uitklapbaar
+│   ├── Integrations
+│   └── Skills
+├─ Secrets                           ← direct nav-item
+├─ Daily Tasks ▾                     ← uitklapbaar
+│   ├── Tasks
+│   ├── Files
+│   └── Chats
+├─ Projects ▾                        ← uitklapbaar
+│   └── [Project naam] ▾
+│       ├── Tasks
+│       ├── Files
+│       └── Chats
+├─ Channels                          ← altijd zichtbaar, NIET opvouwbaar
+│   (gekleurde dot per channel)
+└─ ─────────────────────────────────
+   Account & Billing
+   API
+   Log out
+```
+
+**Sidebar is inklapbaar:** breed (240px) ↔ smal (52px, alleen iconen).
+**Kleurstijl:** donker warm bruin/zwart (`#0f0d0b` bg, `#161412` surface), amber/goud accent (`#c8a96e`), Inter font.
+**Referentie:** `arcamatrix-sidebar.html` (gebouwd 8 april 2026).
+
+### Brain → Knowledge / Memory: Optie B besloten (8 april 2026)
+
+Brain-configuratie (Identity, Soul, User-profiel, Knowledge Files, Memory) leeft **niet** in de sidebar, maar op de **Account-pagina** als eigen tabbladen.
+
+```
+Account-pagina tabs:
+  Profiel    → USER.md (naam, aanspreekvorm, voornaamwoorden)
+  Brain      → Identity (IDENTITY.md) · Soul (SOUL.md) · Knowledge Files · Memory
+  Billing    → token-gebruik, plan, upgrade
+  API        → API keys beheren
+```
 
 ---
 
@@ -34,7 +77,8 @@
 
 Verantwoordelijk voor:
 - Landing page + signup flow (geanimeerde split-screen ervaring)
-- Workspace UI shell (sidebar, chat interface, Brain-modules)
+- Workspace UI shell (sidebar conform bovenstaande structuur, chat interface)
+- Account-pagina met Brain-configuratie (Identity, Soul, User-profiel, Knowledge, Memory)
 - Streaming output weergeven (SSE → typewriter-effect)
 - State: sandbox-status, login-status, workspace-status, chat-sessie
 
@@ -47,6 +91,7 @@ Verantwoordelijk voor:
 - API gateway tussen React en Hermes
 - Token counting / rate limiting (5K sandbox · 25K/dag gratis · onbeperkt premium)
 - SSE streaming van Hermes output → React
+- Encrypted opslag van connector-tokens en secrets per user
 
 ### Hermes Agent (Backend-Python)
 
@@ -91,36 +136,11 @@ Bij signup (Google OAuth of email):
         → Valideer auth_token → haal user_id op
         → Schrijf binding in DB: sandbox_id → user_id
         → Verwijder TTL timer (sandbox vervalt niet meer)
-        → Rename namespace: /hermes-data/sandbox/{sandbox_id}/ → /hermes-data/{user_id}/
+        → Rename namespace: /hermes-data/sandbox/{id}/ → /hermes-data/{user_id}/
         → cookie vervangen door permanente auth-token
         → return: { workspace_id: sandbox_id, promoted: true }
 
         Geen data gekopieerd of verloren — de workspace wás al de demo.
-```
-
-### Mastra Sandbox-endpoints
-
-```typescript
-POST /sandbox/create
-  → { sandbox_id, hermes_session_id, expires_at, token_budget: 5000 }
-
-POST /sandbox/heartbeat
-  body: { sandbox_id }
-  → { expires_at }  // +15 min bij activiteit
-
-POST /sandbox/promote
-  body: { sandbox_id, id_token | email_token }
-  // Promote = rebind, geen kopie
-  1. Valideer auth token → user_id ophalen
-  2. DB: schrijf sandbox_id → user_id binding
-  3. Verwijder TTL timer
-  4. Rename namespace: /sandbox/{id}/ → /{user_id}/
-  5. Vervang cookie door permanente access_token
-  → { user_id, workspace_id: sandbox_id, access_token }
-  // Frontend: zelfde state, geen reload, geen lege workspace
-
-DELETE /sandbox/{sandbox_id}  // internal cron — alleen sandboxes ZONDER user-binding
-  → Hermes namespace verwijderen
 ```
 
 ### Token-budgetten
@@ -131,11 +151,9 @@ DELETE /sandbox/{sandbox_id}  // internal cron — alleen sandboxes ZONDER user-
 | Gratis account | 25.000 tokens | per dag (reset 00:00 UTC) |
 | Premium | onbeperkt | — |
 
-Bij budget bereikt → zachte prompt: *"Je hebt het gratis proefkrediet gebruikt — maak een account aan voor 25K tokens/dag."*
-
 ### Hermes Isolatie-model
 
-Gekozen model: **optie B — gedeeld proces, geïsoleerde namespaces** (licht, snel, geen koude opstart per bezoeker).
+Gekozen model: **optie B — gedeeld proces, geïsoleerde namespaces**.
 
 ```
 Hermes daemon (gedeeld)
@@ -144,12 +162,6 @@ Hermes daemon (gedeeld)
   ├── namespace: user/user-789/     ← ingelogde user
   └── namespace: user/user-012/     ← ingelogde user
 ```
-
-Elke namespace heeft eigen `MEMORY.md`, `USER.md`, `sessions/`, `skills/`. Bij promote: namespace rename + nieuwe auth-binding.
-
-### GDPR
-
-Sandboxes slaan geen persoonsgegevens op (anoniem). Bij promote: expliciete toestemming op signup-moment. Sandbox-data zonder promote (= geen user-binding) verdwijnt automatisch na TTL — geen data-retentie issue. Gepromoveerde workspaces vallen onder het normale gebruikersbeleid. Clean onder AVG.
 
 ---
 
@@ -165,88 +177,24 @@ Sandboxes slaan geen persoonsgegevens op (anoniem). Bij promote: expliciete toes
 | 6 | Hermes–Mastra integratie: MCP, HTTP of gateway? | ✅ Besloten | **MCP via `mcp_serve.py`** |
 | 7 | Hermes isolatie per user: eigen proces, namespace of serverless? | ✅ Besloten | **Namespace-model (gedeeld proces)** |
 | 8 | Landing page: live sandbox of pre-scripted animatie? | ✅ Besloten | **Live sandbox** |
-| 8b | Demo cut-off: wanneer stopt de live sessie? | ✅ Besloten | **Optie 3 — Scenario-driven** (+ max-berichten als fallback) |
+| 8b | Demo cut-off: wanneer stopt de live sessie? | ✅ Besloten | **Scenario-driven** (+ max-berichten fallback) |
 | 9 | LLM provider voor Hermes: OpenRouter, OpenAI of Anthropic? | 🔲 Open | — |
 | 10 | Hermes gateway: ingebouwd of eigen WhatsApp/Telegram integratie? | 🔲 Open | — |
 | 11 | Build tool: Vite of CRA? | ✅ Besloten | **Vite** |
-| 12 | State management: Zustand, Context API of iets anders? | ✅ Besloten | **Zustand** (zie migratie-noot) |
+| 12 | State management: Zustand, Context API of iets anders? | ✅ Besloten | **Zustand** (altijd via custom hooks) |
 | 13 | Knowledge embeddings: lokaal (FAISS) of hosted (Pinecone)? | 🔲 Open | — |
 | 14 | Memory-extractie: automatisch na sessie of opt-in? | 🔲 Open | — |
 | 15 | Skills-registry: eigen hosted of Hermes community? | 🔲 Open | — |
 | 16 | Sandbox promote-flow UI: modal, inline of aparte pagina? | 🔲 Open | — |
-
-### Brain-specifieke beslissingen
-
-| # | Vraag | Impact |
-|---|-------|--------|
-| B1 | Skills-registry: eigen hosted of Hermes community-registry? | Skills-tab backend |
-| B2 | Knowledge-embeddings: lokaal (FAISS) of hosted (Pinecone/Weaviate)? | Kosten + latency |
-| B3 | Memory-extractie: na elke sessie automatisch of opt-in? | Privacy + UX |
-| B4 | Connector-tokens: encrypted in Mastra DB of in Hermes workspace? | Security-architectuur |
-| B5 | Custom skills: public by default of private-first? | Marketplace-beleid |
-
----
-
-### Beslissing #8 — Live Sandbox ✅
-
-De landing page draait op een echte Hermes-instantie via het sandbox-model. De bezoeker krijgt meteen een werkende workspace — zonder account, zonder pre-script.
-
-**Implicaties voor de planning:**
-- B-02 (sandbox provisioning) en B-03 (MCP bridge) moeten operationeel zijn vóór F-04 live content kan tonen
-- F-07 (SSE consumer) schuift op naar week 1 zodat parallel geïntegreerd kan worden zodra B-04 klaar is
-- F-08 (demoConfig.ts / demoScript.ts) **vervalt volledig** — er is geen pre-scripted demo meer
-- Elke pageview kost LLM-tokens — beslissing #9 (provider) wordt daardoor urgenter
-
----
-
-### Beslissing #8b — Scenario-driven cut-off ✅
-
-Hermes voert een specifiek demo-scenario uit (beslissing #2) en triggert de MorphButton zodra het scenario compleet is — niet op basis van tijd of een berichtenteller.
-
-**Implementatie:**
-- Hermes geeft een speciaal `demo_complete` signaal terug als het scenario klaar is
-- Mastra propageert dit signaal via de SSE-stream als een event-type: `event: demo_complete`
-- De `useHermesStream` hook vangt dit op en roept `onDemoComplete()` aan
-- MorphButton morph-animatie start (`900ms cubic-bezier(0.16, 1, 0.3, 1)`)
-
-**Fallback:** Als het scenario om welke reden dan ook niet voltooid wordt (timeout, LLM-fout), triggert een max-berichten veiligheidsnet. Instelbaar via `demoConfig.ts`:
-
-```typescript
-export const DEMO_CONFIG = {
-  initialPrompt: string;              // beslissing #2
-  cutOffTrigger: 'scenario',          // ✅ besloten
-  maxMessagesFallback: 6,             // veiligheidsnet
-  morphTriggerDelay: 1400,            // ms na laatste bericht
-};
-```
-
-> **Volgende stap:** Beslissing #2 (welk scenario / openingsbericht) is nu de enige blokkade voor de demo-flow. Zodra het scenario bekend is, kan de sandbox-ervaring volledig afgerond worden.
-
----
-
-### Beslissing #12 — Zustand ✅ (met migratie-noot)
-
-**Ja, je kunt later makkelijk overstappen naar Context API** — mits je Zustand vanaf dag 1 achter custom hooks plaatst:
-
-```typescript
-// Zo NIET: direct Zustand gebruiken in componenten
-const phase = useStore(s => s.demoPhase);
-
-// Zo WEL: altijd via een custom hook
-export const useDemoPhase = () => useStore(s => s.demoPhase);
-export const useAuthStatus = () => useStore(s => s.authStatus);
-```
-
-Als alle componenten via `useDemoPhase()` en `useAuthStatus()` praten in plaats van direct `useStore()`, is de onderliggende implementatie (Zustand, Context, Jotai) vervangbaar zonder één component aan te raken — alleen de hook-internals wijzigen.
-
-**Dit patroon moet vanaf F-01 toegepast worden.** Dit is geen overhead; het is hoe goed onderhoudbare React eruitziet ongeacht welke state-library je kiest.
+| 17 | Brain-locatie in UI: sidebar of Account-pagina? | ✅ Besloten | **Account-pagina (Optie B)** |
 
 ---
 
 ## Frontend Tickets
 
-> **Referentie voor alle frontend-tickets:** Gebruik `arcamatrix-v2.html` als visuele en timing-referentie. Gebruik deze waarden direct — niet interpreteren, niet aanpassen:
+> **Referentie voor alle frontend-tickets:** `arcamatrix-v2.html` (timing) + `arcamatrix-sidebar.html` (sidebar structuur & stijl).
 >
+> Timingwaarden (gebruik letterlijk — niet aanpassen):
 > ```
 > Left panel transition:   750ms cubic-bezier(0.16, 1, 0.3, 1)
 > Signup fade-out:         350ms ease
@@ -257,63 +205,50 @@ Als alle componenten via `useDemoPhase()` en `useAuthStatus()` praten in plaats 
 > Bericht reveal:          380ms ease (opacity + translateY 6px)
 > ```
 >
-> **Build tool:** Vite
-> **State management:** Zustand, altijd via custom hooks (zie beslissing #12)
+> **State management:** Zustand altijd via custom hooks — nooit direct `useStore()` in componenten.
 
 ---
 
 ### F-01 · LandingPage component ✅
-**Week:** 1 | **Blokkeert:** F-02, F-04 | **Status:** Afgerond (7 april 2026)
+**Week:** 1 | **Status:** Afgerond (7 april 2026)
 
-Split-screen layout, volledig responsive.
+Split-screen layout, volledig responsive. Route `/` — redirect naar `/workspace` als al ingelogd of sandbox actief.
 
 ```
-Route: / (redirect → /workspace als al ingelogd of sandbox actief)
-
 <LandingLayout>
   <SignupPanel />         ← links, sticky, 420px
   <SandboxWorkspace />    ← rechts, live Hermes sandbox
 </LandingLayout>
 ```
 
-**Referentie:** `arcamatrix-v2.html` — let op de exacte breedte van het linkerpanel (420px) en het moment waarop de split plaatsvindt bij resize.
-
 ---
 
 ### F-02 · SignupPanel component ✅
-**Week:** 1 | **Afhankelijk van:** F-01 | **Status:** Afgerond (7 april 2026)
+**Week:** 1 | **Status:** Afgerond (7 april 2026)
 
-```
-States: default → transitioning → workspace
-Props: onSignup(method, email?) → void
-
-Elementen:
-  - Logo + headline
-  - Google OAuth button
-  - Email input + "Start Free →"
-  - Trust badges: Free forever · 25K tokens/day · GDPR · EU
-```
-
-CSS-transitie: signup (420px) → sidebar (220px) over `750ms cubic-bezier(0.16, 1, 0.3, 1)`
-
-**Referentie:** `arcamatrix-v2.html` — de breedte-transitie is de kern van de UX. Animeer exact zoals de prototype.
+States: `default → transitioning → workspace`. CSS-transitie: signup (420px) → sidebar (220px) over `750ms cubic-bezier(0.16, 1, 0.3, 1)`.
 
 ---
 
 ### F-03 · WorkspaceSidebar component
 **Week:** 3 | **Afhankelijk van:** F-01, F-09
 
-Hergebruik van de bestaande sidebar uit de app.
-- Nav: Chat · Brain (Tools, Knowledge, Memory) · Tasks · Files · Settings
-- Channels: WhatsApp · Telegram
-- Footer: Leave feedback
+Sidebar conform `arcamatrix-sidebar.html` (8 april 2026). Definitieve structuur:
 
-**Referentie:** Bestaande sidebar-code uit de app. Enige aanpassing: fade-in animatie (`450ms ease, delay 400ms` vanuit `arcamatrix-v2.html`).
+- **New chat** — bovenaan
+- **Tools** — uitklapbaar (Integrations, Skills)
+- **Secrets** — direct item
+- **Daily Tasks** — uitklapbaar (Tasks, Files, Chats)
+- **Projects** — uitklapbaar, per project ook (Tasks, Files, Chats)
+- **Channels** — altijd zichtbaar, NIET opvouwbaar
+- **Footer** — Account & Billing · API · Log out
+
+Inklapbaar: breed (240px) ↔ smal (52px). Fade-in animatie: `450ms ease, delay 400ms`.
 
 ---
 
 ### F-04 · SandboxWorkspace component
-**Week:** 1 (shell) + week 2 (live integratie) + week 3 (transitie-animaties) | **Afhankelijk van:** F-01, B-02, B-04
+**Week:** 1 (shell) + 2 (live SSE) + 3 (transitie-animaties) | **Afhankelijk van:** F-01, B-02, B-04
 
 ```
 States: loading → active → budget_warning → promote_prompt → workspace
@@ -323,104 +258,44 @@ Sub-componenten:
   <ChatArea />          ← scrollbare berichten (live Hermes via sandbox)
   <InputBar />          ← inputveld + MorphButton
   <BudgetBar />         ← subtiele token-indicator
-
-Input gedrag:
-  - Input is direct actief bij page load (sandbox is live)
-  - Submit handler: sendToSandbox(sandbox_id, text) via SSE
-  - Disabled state: alleen bij token-budget bereikt
-  - "Sign up for free →" knop blijft zichtbaar naast de input,
-    maar blokkeert het typen NIET
 ```
 
-Venster-transitie naar workspace bij signup: `border-radius 0, border none, box-shadow none` over `750ms cubic-bezier(0.16, 1, 0.3, 1)`
-
-**Week 1:** Bouw de volledige UI-shell inclusief alle states. SandboxWorkspace toont een skeleton/loading state zolang B-02/B-04 nog niet live zijn.
-
-**Week 2:** SSE stream inpluggen zodra B-04 beschikbaar is.
-
-**Week 3:** Volledige transitie-animaties (sandbox → workspace bij signup).
-
-**Verschil t.o.v. origineel plan**: geen pre-scripted demo-animatie meer. De sandbox draait live Hermes — F-08 (demoScript.ts) vervalt volledig.
-
-**MorphButton trigger:** Na eerste Hermes-response (niet na laatste demo-bericht — er is geen demo-script meer).
-
-**Referentie:** `arcamatrix-v2.html` — macOS-venster styling, schaduw, border-radius en workspace-transitie zijn exact gedefinieerd.
+MorphButton trigger: na eerste Hermes-response (niet na demo-script — F-08 vervalt).
 
 ---
 
 ### F-05 · ChatMessage componenten ✅
-**Week:** 1-2 | **Afhankelijk van:** F-04 | **Status:** Afgerond (7 april 2026)
+**Week:** 1-2 | **Status:** Afgerond (7 april 2026)
 
-```typescript
-type MessageType =
-  | { type: 'user'; text: string }
-  | { type: 'ai-status'; text: string }       // pulserende groene dot
-  | { type: 'ai-pills'; items: string[] }      // actie-pills
-  | { type: 'ai-brief'; content: Chunk[] }     // typewriter
-  | { type: 'ai-text'; text: string }
-  | { type: 'budget-warning'; used: number; limit: number }  // nieuw — sandbox budget
-```
-
-Alle berichten: `opacity 0→1` + `translateY(6px→0)` over `380ms ease`
-
-**Referentie:** `arcamatrix-v2.html` — alle berichttypes zijn visueel gedemonstreerd. Let op de pulserende groene dot bij `ai-status` en de pill-styling bij `ai-pills`.
+Alle berichttypes: `user`, `ai-status` (pulserende groene dot), `ai-pills`, `ai-brief` (typewriter), `ai-text`, `budget-warning`.
+Reveal: `opacity 0→1` + `translateY(6px→0)` over `380ms ease`.
 
 ---
 
 ### F-06 · MorphButton component ✅
-**Week:** 1-2 | **Afhankelijk van:** F-04, F-05 | **Status:** Afgerond (7 april 2026)
+**Week:** 1-2 | **Status:** Afgerond (7 april 2026)
 
-```
-States: send (34×34px) → morphing → cta (196px breed) → reset
-Tekst: "Sign up for free →"
-Timing: width 900ms cubic-bezier(0.16, 1, 0.3, 1)
-        tekst 350ms ease, delay 500ms
-
-Trigger-volgorde:
-  1. Pagina laadt → input actief, MorphButton is gewone send-knop
-  2. Gebruiker stuurt eerste bericht → Hermes antwoordt
-  3. Na eerste Hermes-response → MorphButton morpht naar
-     "Sign up for free →" (900ms cubic-bezier)
-  4. Gebruiker kan daarna blijven typen óf signen
-  Oude trigger (na laatste demo-bericht) vervalt — er is geen demo-script meer.
-```
-
-Getriggerd door `onFirstResponse()` callback in `useHermesStream` — de morph start 1400ms nadat de eerste AI-response binnenkomt. Niet meer afhankelijk van `demo_complete`. Dit werkt zowel met de mock-stream als met live Hermes (B-04).
-
-**Referentie:** `arcamatrix-v2.html` — gebruik exact de timing. Geen afwijkingen.
+States: `send (34×34px) → morphing → cta (196px) → reset`. Trigger: `onFirstResponse()` callback + 1400ms delay.
 
 ---
 
-### F-07 · SSE streaming consumer ✅
-**Week:** 1 | **Afhankelijk van:** B-04 | **Status:** Afgerond (7 april 2026)
-
-Mastra stuurt Hermes-output via Server-Sent Events. React consumeert de stream en voedt de typewriter-animatie karakter voor karakter.
+### F-07 · SSE streaming consumer hook ✅
+**Week:** 1 | **Status:** Afgerond met mock/stub (7 april 2026)
 
 ```typescript
-// Altijd via custom hook — niet direct useStore aanroepen in componenten
-export const useSandboxStream = (sandbox_id: string) => {
-  // intern: Zustand store + EventSource
-  return {
-    messages: Message[];
-    status: 'idle' | 'streaming' | 'done' | 'error';
-    tokenUsage: { used: number; limit: number };
-  };
-};
+export const useSandboxStream = (sandbox_id: string) => ({
+  messages: Message[];
+  status: 'idle' | 'streaming' | 'done' | 'error';
+  tokenUsage: { used: number; limit: number };
+});
 ```
 
-**Opmerking:** F-07 is naar week 1 geschoven omdat live sandbox direct nodig is. Bouw de hook parallel met B-04 — ze integreren zodra beide klaar zijn.
-
-**Update 7 april 2026:** Hook is opgeleverd met mock/stub die een demo-scenario simuleert tot B-04 live is. Nieuwe bestanden:
-- `stores/streamStore.ts` — Zustand store voor stream status, sessionId, demoComplete flag
-- `hooks/useHermesStream.ts` — de hook zelf; `USE_LIVE_STREAM` flag switcht naar echte EventSource zodra B-04 draait
-- `hooks/useStream.ts` — selector hooks (useStreamStatus, useIsDemoComplete, etc.)
-- `services/hermesMock.ts` — mock event-sequence die berichten met delays afvuurt + `demo_complete` event
-- `DemoWorkspace.tsx` is geüpdatet: gebruikt nu `useHermesStream` i.p.v. losse `useMessages`, en triggert `setMorphState('morphing')` automatisch na eerste AI-response + 1400ms delay via `onFirstResponse` callback (F-06 update).
+`USE_LIVE_STREAM` flag switcht naar echte EventSource zodra B-04 draait.
 
 ---
 
 ### ~~F-08 · Demo trigger configuratie~~ — VERVALLEN
-**Reden:** Met het sandbox-model is er geen pre-scripted demo meer. De sandbox draait live Hermes. De MorphButton triggert na eerste Hermes-response i.p.v. na een demo-script.
+Reden: live sandbox, geen pre-scripted demo meer.
 
 ---
 
@@ -428,11 +303,14 @@ export const useSandboxStream = (sandbox_id: string) => {
 **Week:** 3 | **Afhankelijk van:** F-01, F-03, B-01
 
 ```
-/           → LandingPage (sandbox aanmaken als geen cookie)
-/workspace  → WorkspaceApp (sandbox of auth vereist)
+/           → LandingPage
+/workspace  → WorkspaceApp
+/account    → Account-pagina (Profiel / Brain / Billing / API)
+/tasks      → Daily Tasks
+/projects   → Projects overzicht
 ```
 
-React Router v6. Na signup: `router.push('/workspace')` na transitie-animatie.
+React Router v6.
 
 ---
 
@@ -440,721 +318,268 @@ React Router v6. Na signup: `router.push('/workspace')` na transitie-animatie.
 **Week:** 4 | **Afhankelijk van:** F-01 t/m F-09
 
 Breakpoint < 800px: stacked (form bovenaan, sandbox eronder).
-MorphButton scrollt in beeld na eerste Hermes-response.
+
+---
+
+### F-11 · Tools → Integrations (connector cards)
+**Week:** 3-4 | **Locatie:** Workspace sidebar → Tools → Integrations
+
+OAuth-flow per provider, Connected badge, connector cards. Fase A: read-only.
+
+---
+
+### F-12 · Tools → Skills (browse + install)
+**Week:** 3-4 | **Locatie:** Workspace sidebar → Tools → Skills
+
+Skill-cards, zoekbalk, install-flow, geïnstalleerd overzicht + toggle.
+
+---
+
+### F-13 · Secrets
+**Week:** 3 | **Locatie:** Workspace sidebar → Secrets (direct item)
+**NIEUW — stond niet in origineel masterplan**
+
+Encrypted key/value store per user. UI: lijst van secrets (naam + masked waarde), `+ Add secret`, delete.
+
+---
+
+### F-14 · Projects
+**Week:** 3-4 | **Locatie:** Workspace sidebar → Projects
+**NIEUW — stond niet in origineel masterplan**
+
+Project CRUD: aanmaken, hernoemen, verwijderen. Per project uitklapbaar met eigen Tasks / Files / Chats.
+
+---
+
+### F-15 · Account-pagina
+**Week:** 3-4 | **Locatie:** `/account`
+**NIEUW — vervangt Brain-tabs in sidebar**
+
+Tabbladen:
+- **Profiel** — USER.md (naam, aanspreekvorm, voornaamwoorden)
+- **Brain** — Identity (IDENTITY.md) · Soul (SOUL.md) · Knowledge Files · Memory
+- **Billing** — token-gebruik, plan, upgrade
+- **API** — API keys beheren
+
+Bevat de functionaliteit die eerder als F-11 t/m F-17 (Brain UI in sidebar) was gespecificeerd.
+
+---
+
+### F-16 · Visual Split View ("Bouw modus")
+**Week:** 3 | **Afhankelijk van:** F-03, F-04, F-07, B-04
+
+**Concept:** Wanneer Arcamatrix detecteert dat een gebruiker een project wil bouwen, stelt het één contextuele vraag:
+> *"Wil je visuals hierbij? Dan open ik een preview-scherm rechts zodat je live kan meekijken terwijl we bouwen."*
+
+Bij bevestiging verschuift de chat naar een smalle sidebar-positie (280px) en opent rechts een live preview-paneel. De gebruiker praat gewoon verder met Arcamatrix terwijl hij de app ziet groeien.
+
+**Trigger:** SSE event `{ type: "open_split_view" }` via `useHermesStream`.
+
+**Transitie (3 fasen):**
+1. Chat krimpt naar 280px (480ms, `cubic-bezier(0.16, 1, 0.3, 1)`)
+2. Preview schuift in vanuit rechts (520ms, delay 200ms)
+3. Toolbar fade-in (300ms, delay 500ms)
+
+**Layout in split-modus:**
+```
+┌──────────┬──────────┬────────────────────────────────────────────┐
+│ Sidebar  │  Chat    │  Preview                                   │
+│ 234px    │  280px   │  flex-1                                    │
+│          │  resize  │  toolbar: url-balk, device-toggle, reload  │
+│          │          │  iframe srcdoc (debounced 400ms)           │
+└──────────┴──────────┴────────────────────────────────────────────┘
+```
+
+**Preview-rendering:**
+- Arcamatrix streamt complete HTML/CSS/JS als antwoord
+- SSE events `{ type: "preview_update", html: "..." }` updaten de iframe
+- `<iframe srcdoc>` bijgewerkt per significante chunk (debounced 400ms)
+- Skeleton-loader in iframe zolang eerste output nog niet binnenkomt
+
+**Terugschakelen:** `×` in preview-toolbar → chat herstelt naar volledig scherm (380ms inverse transitie)
+
+**State:** `workspaceLayoutStore` (Zustand) — `layout: 'chat-only' | 'split-view'`, `previewHtml: string | null`
+
+**Sub-tickets:**
+
+| Ticket | Omschrijving | Afhankelijk van |
+|--------|-------------|-----------------|
+| F-16a | `PreviewPanel` component + transitie-animaties | F-03, F-04 |
+| F-16b | `PreviewFrame` iframe srcdoc + debounce | F-16a |
+| F-16c | `useWorkspaceLayout` Zustand store + hooks | F-16a |
+| F-16d | SSE event routing `open_split_view` + `preview_update` | F-07, B-04 |
+| B-16 | Hermes gedragsregel (IDENTITY.md bouw-gedrag) + `preview_update` SSE events | B-03, B-04 |
+
+**Open beslissingen:**
+
+| # | Vraag | Status |
+|---|-------|--------|
+| 17 | Preview minimale breedte op mobile: stacked of verbergen? | Open |
+| 18 | Preview-persistentie: iframe-staat bij chat-scroll of reset bij update? | Open |
 
 ---
 
 ## Backend Tickets
 
-> **Referentie voor alle backend-tickets:** Beslissing #6 is genomen — gebruik **MCP via `mcp_serve.py`** als integratiemethode tussen Mastra en Hermes. Start bij de `mcp_serve.py` in de Hermes-repo en valideer de verbinding met een minimale ping/tool-call vóór je verder bouwt.
+> **Referentie:** Beslissing #6 — gebruik MCP via `mcp_serve.py`. Start altijd met een minimale ping/tool-call validatie.
 
 ---
 
-### B-01 · Auth endpoints (Mastra/Node)
-**Week:** 1 | **Blokkeert:** B-02, F-09 | **Status:** Afgerond als frontend-stub (7 april 2026)
+### B-01 · Auth endpoints ✅
+**Week:** 1 | **Status:** Afgerond als frontend-stub (7 april 2026)
 
 ```
-POST /auth/google
-  body: { id_token }
-  → Google JWT validatie
-  → upsert user
-  → return: { access_token, user, workspace_id, is_new_user }
-
-POST /auth/email/start
-  body: { email }
-  → magic link versturen
-  → return: { sent: true }
-
-POST /auth/email/verify
-  body: { token }
-  → return: { access_token, user, workspace_id, is_new_user }
+POST /auth/google           → { access_token, user, workspace_id, is_new_user }
+POST /auth/email/start      → { sent: true }
+POST /auth/email/verify     → { access_token, user, workspace_id, is_new_user }
 ```
-
-**Opmerking:** Beslissing #1 (magic link vs. wachtwoord) is nog open. Implementeer magic link als default.
-
-**Update 7 april 2026:** In deze workspace ontbreekt nog een Mastra/Node backend, dus `B-01` is hier opgeleverd als een concrete frontend-stub met dezelfde contracten voor `POST /auth/google`, `POST /auth/email/start` en `POST /auth/email/verify`. De signup-flow gebruikt nu magic link als default, toont een lokale demo-token voor verificatie, en levert na succesvolle auth een sessie-object op met `{ access_token, user, workspace_id, is_new_user }` zodat F-09 en verdere integratie tegen een stabiel auth-contract kunnen bouwen.
 
 ---
 
-### B-02 · Sandbox provisioning (NIEUW — was workspace provisioning na auth)
-**Week:** 1-2 | **Afhankelijk van:** B-01, B-03 | **Blokkeert:** F-04
+### B-02 · Sandbox provisioning
+**Week:** 1-2 | **Blokkeert:** F-04
 
 ```
-POST /sandbox/create
-  (geen auth vereist)
-  → Hermes namespace aanmaken: /hermes-data/sandbox/{uuid}/
-  → seed default IDENTITY.md + USER.md (leeg)
-  → cookie zetten met sandbox_id
-  → return: { sandbox_id, hermes_session_id, expires_at }
-
-POST /sandbox/heartbeat
-  body: { sandbox_id }
-  → TTL verlengen +15 min
-  → return: { expires_at }
-
-POST /sandbox/promote
-  (auth vereist — promote = rebind, geen kopie)
-  body: { sandbox_id }
-  1. Valideer auth → user_id ophalen
-  2. DB: sandbox_id → user_id binding schrijven
-  3. TTL timer verwijderen (workspace wordt permanent)
-  4. Namespace lazy rename: /sandbox/{id}/ → /{user_id}/
-  5. Cookie vervangen door permanente access_token
-  → return: { workspace_id: sandbox_id }
-
-DELETE /sandbox/{sandbox_id}  (internal cron — alleen sandboxes ZONDER user-binding)
-  → namespace verwijderen
+POST /sandbox/create        → { sandbox_id, hermes_session_id, expires_at }
+POST /sandbox/heartbeat     → { expires_at }
+POST /sandbox/promote       → { workspace_id, access_token }
+DELETE /sandbox/{id}        (internal cron — geen user-binding)
 ```
-
-**Kritiek**: na promote is er niets gekopieerd of verloren. De sandbox-conversatie, memory en instellingen die de bezoeker opbouwde zijn direct de permanente workspace. Gebruiker ziet na signup exact dezelfde chat — geen lege state.
 
 ---
 
-### B-03 · Mastra ↔ Hermes MCP Bridge
-**Week:** 1 | **Blokkeert:** B-02, B-04, F-04, F-07
+### B-03 · Mastra ↔ Hermes bridge (MCP) 🔴
+**Week:** 1 | **Blokkeert:** alles
 
-**Status:** `In uitvoering` — lokale MCP spike staat klaar en is mock-gevalideerd; echte Hermes-validatie is nog geblokkeerd.
-
-**Update 7 april 2026:** Toegevoegd in de bestaande Arcamatrix codebase: een minimale stdio MCP client, een runnable `hermes-mcp-spike` script en een mock-integratietest voor `initialize → tools/list → tools/call`. De echte stap `python mcpserve.py` + minimale ping/tool-call naar Hermes kon in deze workspace nog niet afgerond worden omdat er geen lokale Hermes checkout met `mcpserve.py` aanwezig is.
-
-**Beslissing #6 genomen: gebruik MCP via `mcpserve.py`.**
-**Beslissing #7: gedeeld Hermes-proces, namespace-geïsoleerd per sandbox/user — geen eigen proces per user.**
-
-**Prioriteit:** Dit ticket blokkeert nu ook de frontend (F-04, F-07) omdat live sandbox vereist is. B-03 is de harde kritieke path voor week 1.
-
-#### Context
-
-Stack: React (Vite) → Mastra (TypeScript) → Hermes (Python, v0.7.0).
-Integratiemethode: MCP via `mcpserve.py` (Beslissing 6).
-
-Bestaande spike in codebase:
-- Minimale stdio MCP client
-- Runnable `hermes-mcp-spike` script
-- Mock-integratietest voor `initialize → tools/list → tools/call`
-
-Wat NOG NIET werkt: de echte verbinding met een draaiende Hermes-instantie. Dit ticket maakt die echte verbinding.
-
-#### Stap 1 — Valideer de MCP-verbinding (ping spike)
-
-Start Hermes lokaal:
-```bash
-cd /path/to/hermes
-python mcpserve.py
-```
-
-Voer vanuit Mastra de volgende MCP calls uit in volgorde:
-1. `initialize` — handshake
-2. `tools/list` — verifieer dat tools beschikbaar zijn
-3. `tools/call` met de ping-tool — verifieer een round-trip response
-
-Verwacht resultaat: een succesvolle JSON-response van Hermes.
-Commit deze werkende spike als `hermes-mcp-spike`.
-
-#### Stap 2 — Bouw de HermesMCPClient class
-
-Locatie: `server/lib/hermesMCPClient.ts`
-
-```typescript
-export class HermesMCPClient {
-  private proc: ChildProcess;
-  private pending: Map<string, { resolve, reject }>;
-
-  constructor(hermesDataDir: string)
-  // Spawn: python mcpserve.py
-  // Pipe: stdin/stdout voor JSON-RPC over stdio
-  // hermesDataDir wordt als --data-dir meegegeven aan mcpserve.py
-
-  async initialize(): Promise<void>
-  // MCP initialize handshake
-
-  async listTools(): Promise<Tool[]>
-  // tools/list call
-
-  async callTool(name: string, args: Record<string, unknown>): Promise<ToolResult>
-  // tools/call call
-
-  async chat(namespace: string, message: string): Promise<AsyncIterable<string>>
-  // Stuur een chat-bericht naar Hermes namespace, stream tokens terug
-
-  async createNamespace(namespace: string): Promise<void>
-  // Maak een nieuwe Hermes namespace aan (voor sandbox of user)
-
-  async renameNamespace(from: string, to: string): Promise<void>
-  // Rename namespace (sandbox promote: sandbox-uuid → user-id)
-
-  async deleteNamespace(namespace: string): Promise<void>
-  // Verwijder namespace (sandbox TTL cleanup)
-
-  shutdown(): void
-  // Kill de mcpserve.py subprocess gracefully
-}
-```
-
-**Namespace-conventie (strict):**
-- Anonieme sandbox: `sandbox/{sandboxId}`
-- Ingelogde user: `user/{userId}`
-
-#### Stap 3 — Bouw de HermesBridge singleton
-
-Locatie: `server/lib/hermesBridge.ts`
-
-```typescript
-// Singleton: één gedeeld Hermes-proces, namespace-geïsoleerd per sandbox/user
-// (Beslissing 7: gedeeld proces, geïsoleerde namespaces — geen eigen proces per user)
-
-export const hermesBridge = new HermesMCPClient(process.env.HERMES_DATA_DIR);
-```
-
-Dit is de gedeelde daemon. Alle Mastra-routes importeren `hermesBridge` en sturen namespace-prefix mee bij elke call — nooit een eigen Hermes-instantie opstarten.
-
-#### Stap 4 — Plug de bridge in op de Mastra API-routes
-
-**POST /api/sandbox/create** (B-02):
-```typescript
-await hermesBridge.createNamespace(`sandbox/${sandboxId}`);
-// Seed lege IDENTITY.md en USER.md in de namespace
-```
-
-**GET /api/stream/:sessionId** (B-04 SSE pipeline):
-```typescript
-const stream = hermesBridge.chat(namespace, userMessage);
-for await (const token of stream) {
-  res.write(`data: ${JSON.stringify({ type: 'token', text: token })}\n\n`);
-}
-res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
-```
-
-**POST /api/sandbox/promote** (B-02):
-```typescript
-await hermesBridge.renameNamespace(`sandbox/${sandboxId}`, `user/${userId}`);
-```
-
-**DELETE /api/sandbox/:sandboxId** (cron cleanup):
-```typescript
-await hermesBridge.deleteNamespace(`sandbox/${sandboxId}`);
-```
-
-#### Stap 5 — Schrijf de integratietest
-
-Locatie: `server/tests/hermesBridge.test.ts`
-
-Test de volledige flow end-to-end:
-1. `initialize` — handshake slaagt
-2. `createNamespace('sandbox/test-abc')` — namespace bestaat daarna
-3. `chat('sandbox/test-abc', 'Hoi')` — tokens komen terug als `AsyncIterable`
-4. `renameNamespace('sandbox/test-abc', 'user/test-user-1')` — namespace hernoemd
-5. `deleteNamespace('user/test-user-1')` — namespace verwijderd
-
-Elke stap assertion: geen throws, correcte response-types.
-
-#### Scope grenzen
-
-**In scope:**
-- HermesMCPClient over stdio (JSON-RPC)
-- Namespace lifecycle: create, rename, delete
-- `chat()` met token streaming
-- Integratie op B-02 en B-04 routes
-- Integratietest
-
-**Niet in scope:**
-- Token-budgetten (B-05)
-- TTL-timer logic (B-02)
-- SSE-event formatting (B-04)
-- Auth-validatie (B-01)
-
-#### Environment variabelen (toevoegen aan `.env`)
-
-```
-HERMES_DATA_DIR=./hermes-data
-HERMES_BIN=python
-HERMES_SCRIPT=./hermes/mcpserve.py
-```
-
-#### Acceptatiecriteria
-
-- [ ] `hermes-mcp-spike` commit aanwezig: initialize → tools/list → tools/call werkt
-- [ ] `HermesMCPClient` class gebouwd met alle methoden
-- [ ] `hermesBridge` singleton exporteert vanuit `server/lib/hermesBridge.ts`
-- [ ] `POST /api/sandbox/create` roept `createNamespace` aan op Hermes
-- [ ] `GET /api/stream/:sessionId` streamt echte Hermes-tokens via SSE
-- [ ] `POST /api/sandbox/promote` voert `renameNamespace` uit zonder dataverlies
-- [ ] Integratietest slaagt end-to-end
-- [ ] Geen eigen Hermes-proces per sandbox — altijd namespace-prefix op gedeeld proces
-
-#### Blocker
-
-Codex heeft het pad naar de lokale Hermes-checkout met `mcpserve.py` nodig. Zonder draaiende Hermes kan Stap 1 niet gevalideerd worden.
-
-**Referentie:** `mcpserve.py` in de Hermes-repo. Bekijk de Hermes-documentatie voor welke tools via MCP exposed worden.
+Kritiek pad. Startpunt: `python mcp_serve.py` in Hermes-repo, valideer met minimale ping/tool-call, commit als `hermes-mcp-spike`.
 
 ---
 
-### B-04 · SSE streaming pipeline
-**Week:** 1 | **Afhankelijk van:** B-03 | **Blokkeert:** F-07
-
-**Status:** `Gedeeltelijk afgerond` - lokale Hermes -> Mastra -> React SSE demo draait nu end-to-end in deze workspace, inclusief live `usage` events voor de BudgetBar; de echte Hermes productie-koppeling blijft afhankelijk van B-03.
-
-**Update 7 april 2026:** Toegevoegd in deze workspace: een lokale `/api/demo/session` bootstrap, een Vite-based SSE endpoint op `GET /api/stream/:session_id`, een echte `useHermesStream` consumer op `EventSource`, incrementele `token` events en `usage` payloads van de vorm `{ type: 'usage', used: N, limit: M }`. De demo-window bouwt een AI-antwoord nu live op terwijl de BudgetBar tijdens het streamen direct mee-updatet. De productievariant blijft nog geblokkeerd omdat een echte Mastra server en Hermes runtime hier nog ontbreken; daarvoor blijft B-03 leidend.
+### B-04 · SSE streaming pipeline ◐
+**Week:** 1 | **Blokkeert:** F-07 productie | **Status:** Lokale demo live
 
 ```
-Hermes output → Mastra SSE endpoint → React useSandboxStream hook
-
-GET /stream/:session_id
-  Content-Type: text/event-stream
-  → doorsturen van Hermes token output in real-time
-  + token usage events: { type: 'usage', used: N, limit: M }
+GET /stream/:session_id     (text/event-stream)
+  → Hermes token output in real-time
+  + { type: 'usage', used: N, limit: M }
 ```
-
-**Prioriteit:** Naar week 1 geschoven (was week 2) omdat live sandbox in de landing page vereist is. Test met een lange Hermes-response om te valideren dat tokens één voor één doorkomen.
 
 ---
 
-### B-05 · Token teller + rate limiting (Mastra)
-**Week:** 2-3 | **Afhankelijk van:** B-01, B-03
-**Status:** ◐ Lokale budgetstub live; productie wacht nog op echte Mastra middleware.
-
-**Update 7 april 2026:** In deze workspace is `B-05` lokaal opgeleverd bovenop de bestaande Vite/SSE-stub. Toegevoegd: `GET /api/tokens/status`, een sandboxbudget van `5.000` tokens per sessie, een gratis tier van `25.000` tokens per dag met reset om `00:00 UTC`, preflight-budgetchecks voor de stream, `429` responses zodra een uitgeput budget opnieuw probeert te streamen, en een `budget_exhausted` SSE-event dat tijdens een lopende stream direct een upgrade-prompt toont. De BudgetBar leest nu ook `tier`, `resets_at` en exhaustion-state uit. De productievariant blijft nog afhankelijk van echte Mastra `/agent/*` middleware en Hermes-runtime; daarvoor blijven `B-03` en de ontbrekende backend in deze workspace leidend.
+### B-05 · Token teller + rate limiting ◐
+**Week:** 2-3 | **Status:** Lokale stub live
 
 ```
-Sandbox:  5.000 tokens eenmalig, geen reset
-Gratis:  25.000 tokens/dag, reset 00:00 UTC
-Premium:  geen limiet
-
-GET /tokens/status
-  → { used, limit, resets_at, tier }
-
-Middleware op alle /agent/* routes:
-  → check budget voor sandbox of user
-  → 429 als overschreden, met upgrade-prompt in SSE stream
+GET /tokens/status          → { used, limit, resets_at, tier }
+Middleware op /agent/*      → 429 + upgrade-prompt bij overschrijding
+budget_exhausted SSE event  → zachte upgrade-prompt in UI
 ```
-
-**Opmerking:** De sandbox verbruikt tokens vóór signup. Het token-budget per sandbox (5K) bepaalt hoeveel een anonieme bezoeker kan uitproberen — houd dit mee als kostenoverweging bij beslissing #9 (LLM provider).
 
 ---
 
 ### B-06 · Hermes namespace isolatie
 **Week:** 3 | **Afhankelijk van:** B-02
 
-Gekozen model: **optie B — gedeeld proces, geïsoleerde namespaces**.
-
 ```
-Hermes daemon (gedeeld proces)
-  /hermes-data/
-    sandbox/{sandbox_id}/
-      IDENTITY.md
-      USER.md
-      MEMORY.md
-      sessions/
-    {user_id}/
-      IDENTITY.md
-      USER.md
-      MEMORY.md
-      skills/
-      knowledge/
-      sessions/
+/hermes-data/
+  sandbox/{sandbox_id}/    ← anonieme bezoekers (TTL 30 min)
+  {user_id}/
+    IDENTITY.md · SOUL.md · USER.md · MEMORY.md
+    skills/ · knowledge/ · sessions/
+  connectors/              ← OAuth tokens (encrypted)
 ```
-
-Isolatie via namespace-prefix in alle Hermes tool-calls. Geen eigen proces per user (te zwaar voor anoniem traffic).
 
 ---
 
 ### B-07 · Hermes gateway (WhatsApp + Telegram)
 **Week:** 4 | **Afhankelijk van:** B-06 | **Beslissing #10 vereist**
 
-Hermes heeft ingebouwde gateway voor Telegram, WhatsApp, Discord, Signal.
-
-```bash
-hermes gateway start
-# → koppelt bestaande workspace-sessies aan messaging platforms
-# → context blijft gesynchroniseerd met workspace
-```
-
-**Beslissing #10 nog open:** Aanbeveling: gebruik de ingebouwde Hermes gateway voor fase 1.
+Ingebouwde Hermes gateway (`hermes gateway start`). Koppelt workspace-sessies aan messaging platforms.
 
 ---
 
 ### B-08 · GDPR + EU data residency
 **Week:** 4 | **Afhankelijk van:** B-06
 
-- Alle user data (Hermes memory, sessies, skills) op EU servers
+- EU servers voor alle user data
 - `DELETE /account` verwijdert Hermes workspace volledig
-- Sandbox-data: automatisch weg na TTL als niet gepromoveerd
-- Hermes memory-bestanden zijn plaintext Markdown — transparant voor gebruikers
-- Geen model-side data retentie (OpenRouter/OpenAI data-policies checken bij beslissing #9)
+- Sandbox-data weg na TTL als niet gepromoveerd
 
 ---
 
-## Brain-modules — Gedetailleerd
-
-De **Brain**-sectie is het configuratiehart van de Arcamatrix workspace. Het bestaat uit drie modules:
-
-| Module | UI-label | Wat het doet | Hermes-mapping |
-|--------|----------|--------------|----------------|
-| **Tools** | Brain > Tools | Connectors (externe services) + Skills (procedurele kennis) beheren | `hermes tools`, `hermes skills` |
-| **Knowledge** | Brain > Knowledge | Identity (agent-persona), Soul, User-profiel, + kennisbestanden uploaden | `IDENTITY.md`, `USER.md`, knowledge files |
-| **Memory** | Brain > Memory | Persistent factual memory en sessie-context per workspace | `MEMORY.md`, session store |
-
----
-
-### Module 1 · Tools (Brain > Integrations)
-
-#### 1.1 Connectors-tab
-
-Connectors zijn **OAuth/API-koppelingen** naar externe services die Hermes namens de gebruiker kan aansturen.
-
-**Wat de gebruiker ziet:**
-- **Always Active**: Base44 Backend — database, functions, file storage, automations (ingebouwd, niet verwijderbaar)
-- **Connected (N)**: actief verbonden connectors met groen label
-- **Available**: 41+ connectors: Stripe, Gmail, Google Calendar, Google Sheets, Google Drive, LinkedIn, Google Analytics, Google Docs, Outlook, GitHub, Slack Bot, Notion, HubSpot, + 32 meer
-
-**Fase A — Read-only connectoren (MVP)**
-- OAuth-flow per provider (Google-family, GitHub, Outlook)
-- Token-opslag encrypted per user in Mastra (`/credentials/{user_id}/{provider}`)
-- Hermes ontvangt read-only access token via context-inject bij elke agent-run
-- UI: connector card met `Connect` button → OAuth popup → succes-state met "Connected" badge
-- Scope: enkel lezen (calendar events, emails, sheets data, drive files)
-
-**Fase B — Actieve connectors**
-- Write-scope toevoegen (Gmail sturen, Calendar event aanmaken, Sheet schrijven)
-- Hermes tool-definitie per connector: `gmail_send`, `calendar_create`, `sheets_append`
-- Rate-limit en permission-check in Mastra middleware voordat Hermes de tool uitvoert
-- UI: connector card toont "Read only" of "Full access" badge, instelbaar per connector
-
-**Fase C — Custom connectors**
-- Gebruiker kan eigen REST-API toevoegen via OpenAPI spec upload of handmatige endpoint-definitie
-- Hermes genereert automatisch tool-definitie op basis van spec
-- UI: `+ Add custom connector` flow met naam, base URL, auth-type (Bearer, API key, OAuth)
-
-**Backend-taken (Mastra + Hermes):**
+### B-09 · Connectors OAuth (Mastra)
+**Week:** 3-4 | **Blokkeert:** F-11
 
 ```
-POST /connectors/oauth/start
-  body: { provider, scopes[] }
-  → genereert OAuth URL, slaat state op
-  → return: { auth_url }
-
-POST /connectors/oauth/callback
-  body: { provider, code, state }
-  → wisselt code voor tokens
-  → slaat encrypted tokens op per user
-  → return: { connected: true, provider, scopes[] }
-
-GET /connectors/status
-  → return: { connected: [{ provider, scopes, connected_at }] }
-
-DELETE /connectors/{provider}
-  → revoke + verwijder tokens
-
-Hermes: bij agent-run context-inject:
-  → laadt actieve connectors voor user
-  → injecteert tokens als tool-context
-  → Hermes kan `use_tool("gmail_read", {...})` aanroepen
+POST /connectors/oauth/start        → { auth_url }
+POST /connectors/oauth/callback     → { connected, provider, scopes }
+GET  /connectors/status             → { connected: [...] }
+DELETE /connectors/{provider}       → revoke + verwijder tokens
 ```
 
 ---
 
-#### 1.2 Skills-tab
-
-Skills zijn **procedurele kennisblokken** die Hermes vertellen hoe het een taak uitvoert — niet *wat* het weet (dat is Knowledge/Memory) maar *hoe* het handelt.
-
-**Wat de gebruiker ziet:**
-- **Browse**: 166 skills beschikbaar, doorzoekbaar
-- Skills hebben naam, beschrijving, gebruikersaantal, en publisher (bv. `anthropics`)
-- Voorbeelden: `skill-creator`, `pdf`, `pptx`, `docx`, `xlsx`
-- Elke skill heeft een `+ Add` knop
-
-**Hoe Skills werken in Hermes:**
-Skills in Hermes zijn Markdown-bestanden (`.md`) met gestructureerde instructies. Ze worden tijdens een agent-run dynamisch geladen als de agent bepaalt dat een skill relevant is. Het skills-systeem is **zelfverbeterend**: Hermes kan bestaande skills aanpassen op basis van outcome feedback.
+### B-10 · Skills API (Mastra)
+**Week:** 3-4 | **Blokkeert:** F-12
 
 ```
-/hermes-data/{user_id}/skills/
-  pdf.md
-  xlsx.md
-  custom-skill-name.md
-```
-
-**Fase A — Skill library browsen + installeren (MVP)**
-- Skills-registry endpoint: `GET /skills/browse?q=&category=&page=`
-- Skill installeren: kopieert `.md` naar user's Hermes workspace (`/hermes-data/{user_id}/skills/`)
-- UI: zoekbalk, skill-cards met naam + beschrijving + gebruikersaantal + publisher-badge
-- Geïnstalleerde skills krijgen checkmark; `+ Add` → `✓ Installed`
-- Maximaal 20 skills actief tegelijk (configureerbaar)
-
-**Fase B — Skill management**
-- Overzicht van geïnstalleerde skills per workspace
-- Skill deactiveren zonder verwijderen (toggle)
-- Skill-versies: update-notificatie als publisher nieuwe versie uitbrengt
-- Skill-gebruik statistieken: "used 12 times this week"
-
-**Fase C — Custom skills aanmaken**
-- UI: `+ New skill` → naam + beschrijving + Markdown-editor
-- `skill-creator` skill inzetten: gebruiker beschrijft gewenst gedrag, Hermes genereert skill-inhoud
-- Skills kunnen andere skills importeren (`import: pdf`)
-- Skill-review flow: test skill in sandbox voor activatie
-
-**Fase D — Skills marketplace**
-- Gebruikers kunnen eigen skills publiceren (review-proces)
-- Skill-ratings en reviews
-- Organisaties kunnen private skill-libraries aanleggen
-
-**Backend-taken:**
-
-```
-GET /skills/browse
-  params: { q, category, sort, page }
-  → return: { skills: [{ id, name, description, users, publisher, version }] }
-
-POST /skills/install
-  body: { skill_id }
-  → kopieert skill-definitie naar user's Hermes workspace
-  → return: { installed: true, skill_id }
-
-DELETE /skills/{skill_id}
-  → verwijdert skill uit user's workspace
-
-GET /skills/installed
-  → return: { skills: [{ id, name, active, last_used, use_count }] }
-
-PATCH /skills/{skill_id}
-  body: { active: bool }
-  → toggle activatie
+GET    /skills/browse               → { skills: [...] }
+POST   /skills/install              → { installed, skill_id }
+GET    /skills/installed            → { skills: [...] }
+PATCH  /skills/{id}                 → toggle activatie
+DELETE /skills/{id}                 → verwijderen
 ```
 
 ---
 
-### Module 2 · Knowledge (Brain > Knowledge)
+### B-11 · Brain Knowledge API (Mastra)
+**Week:** 3-4 | **Blokkeert:** F-15 Brain-tab
 
-Knowledge beheert **wie de agent is** en **wat de agent weet**.
-
-#### 2.1 Identity — Agent-persona
-
-**Wat de gebruiker ziet:**
-- Identity card met naam (Tymos), avatar, beschrijving ("AI agent — warm, sharp, casual")
-- Bewerkbaar via `Edit` knop
-- Toont de raw `IDENTITY.md` inhoud (inklapbaar)
-
-**Hoe het werkt:**
-`IDENTITY.md` is het primaire systeem-prompt-fragment. Het wordt bij elke Hermes-run als eerste context geladen. Hermes injecteert dit vóór user-berichten in de prompt-keten.
-
-**Fase A — Identity weergeven + bewerken (MVP)**
-- UI: identity card met naam, avatar-upload, bio-tekst
-- `Edit` → modal met velden: naam, persoonlijkheidsbeschrijving, toon (warm/formeel/casual), specialisaties
-- Mastra slaat op als `IDENTITY.md` in Hermes workspace
-- Preview: "Raw IDENTITY.md" toggle toont gegenereerde Markdown
-
-**Fase B — Persona-templates**
-- Keuze uit voorgebouwde persona-starters: Personal Assistant, Research Agent, Code Agent, Sales Agent
-- Template vult IDENTITY.md voor, gebruiker verfijnt
-- Persona-foto: avatar-generator of upload
-
-**Fase C — Meerdere persona's**
-- Per workspace meerdere agent-profielen (bv. werkagent vs. persoonlijk assistent)
-- Switchen via workspace-selector
+```
+GET/PUT  /brain/knowledge/identity  → IDENTITY.md + SOUL.md
+GET/POST /brain/knowledge/files     → upload, index, verwijder knowledge files
+```
 
 ---
 
-#### 2.2 Soul
+### B-12 · Brain Memory API (Mastra)
+**Week:** 3-4 | **Blokkeert:** F-15 Brain-tab
 
-**Wat de gebruiker ziet:**
-- Soul-card met beschrijvende tekst over de kernaard van de agent
-- Bewerkbaar
-
-**Hoe het werkt:**
-Soul is een sub-sectie van `IDENTITY.md` of een apart `SOUL.md` bestand. Het beschrijft **gedragsregels** en **waarden** — de richtlijnen die de agent volgt los van specifieke taken.
-
-**Fase A — Soul weergeven + bewerken**
-- Rich text editor voor Soul-tekst
-- Lengte-indicator (optimaal: 200-500 woorden)
-- Live preview: hoe de agent zich anders gedraagt met/zonder soul-definitie
-
-**Fase B — Soul-elementen**
-Gestructureerde bouwblokken i.p.v. vrije tekst:
-- Toon-slider: formeel ↔ casual
-- Empathie-niveau: taakgericht ↔ relationeel
-- Proactiviteit: reactief ↔ proactief
-- Output-stijl: beknopt ↔ uitgebreid
+```
+GET    /brain/memory                → items lijst
+POST   /brain/memory                → item toevoegen
+PATCH  /brain/memory/{id}           → item bewerken
+DELETE /brain/memory/{id}           → item verwijderen
+```
 
 ---
 
-#### 2.3 User-profiel
+### B-13 · Secrets API (Mastra)
+**Week:** 3 | **Blokkeert:** F-13
+**NIEUW — stond niet in origineel masterplan**
 
-**Wat de gebruiker ziet:**
-- User-card: "Learn about the person you're helping"
-- Velden: Name, What to call them, Pronouns (optional)
-- Bewerkbaar
+```
+GET    /secrets                     → { secrets: [{ name, created_at }] }
+POST   /secrets                     → { name, value } → encrypted opslag
+DELETE /secrets/{name}              → verwijderen
+```
 
-**Hoe het werkt:**
-Mapt op `USER.md` in Hermes workspace. Wordt geïnjecteerd als user-context in elke prompt. Hermes **updatet dit automatisch** als het nieuwe informatie ontdekt in gesprekken.
-
-**Fase A — Basis user-profiel (MVP)**
-- Naam, aanspreekvorm, voornaamwoorden
-- Mastra schrijft naar `USER.md` bij opslaan
-
-**Fase B — Uitgebreid profiel**
-- Voorkeuren (taal, tijdzone, notificatiestijl)
-- Werkcontext: functie, bedrijf, tools die ze gebruiken
-- Persoonlijke context: interesses, doelen
-
-**Fase C — Automatische profielverrijking**
-- Hermes detecteert nieuwe user-info in gesprekken ("je werkt bij bedrijf X")
-- Proposeert update: "Ik heb geleerd dat je bij X werkt — bewaren?"
-- User bevestigt of verwerpt
-- History log: wanneer is welk feit toegevoegd
+Secrets zijn encrypted opgeslagen per user in Mastra. Waarden zijn na opslaan niet meer leesbaar in de UI (alleen naam zichtbaar).
 
 ---
 
-#### 2.4 Knowledge Files
-
-**Wat de gebruiker ziet:**
-- Drag-and-drop upload gebied: "Documents, images, CSVs, code files, and more"
-- `+ New` knop voor handmatige creatie
-
-**Hoe het werkt:**
-Geüploade bestanden worden opgeslagen in Hermes' kennis-directory. Bij relevante queries retrievet Hermes automatisch relevante passages via vector search of keyword matching.
-
-**Fase A — File upload + opslag (MVP)**
-- Upload: PDF, DOCX, TXT, CSV, MD, code files
-- Files worden opgeslagen in `/hermes-data/{user_id}/knowledge/`
-- Hermes indexeert automatisch bij upload (chunking + embedding)
-- UI: lijst van uploaded files met naam, type, grootte, datum
-
-**Fase B — File management**
-- Preview van bestandsinhoud in UI
-- Hernoemen, verwijderen, her-indexeren
-- Tag-systeem voor organisatie
-- Zoekfunctie binnen knowledge files
-
-**Fase C — Knowledge graph**
-- Hermes bouwt relaties tussen kennisitems
-- Visualisatie van verbonden concepten
-- "Conflicts detected": tegenstrijdige informatie highlighten
-
-**Fase D — Web clips + integrations**
-- Browser extension om webpagina's direct toe te voegen
-- Auto-sync met Google Drive / Notion folders
-- Periodieke re-indexering van gekoppelde bronnen
-
----
-
-### Module 3 · Memory (Brain > Memory)
-
-Memory beheert **wat de agent onthoudt** over de gebruiker en gesprekken.
-
-**Wat de gebruiker ziet (lege state):**
-- Lege state met illustratie + "Nothing here yet"
-- Uitleg: "As you chat, your agent will build memory automatically — context from recent messages, session summaries, and key facts."
-- `+ Add` knop voor handmatig toevoegen
-
-**Hoe Memory werkt in Hermes:**
+### B-14 · Projects API (Mastra)
+**Week:** 3-4 | **Blokkeert:** F-14
+**NIEUW — stond niet in origineel masterplan**
 
 ```
-/hermes-data/{user_id}/
-  MEMORY.md       ← persistent factual memory (key-value facts)
-  sessions/
-    {session_id}.md   ← gecomprimeerde sessie-samenvattingen
+GET    /projects                    → { projects: [...] }
+POST   /projects                    → { name } → { project_id }
+PATCH  /projects/{id}               → hernoemen
+DELETE /projects/{id}               → verwijderen + Hermes namespace cleanup
 ```
 
-**MEMORY.md** bevat gestructureerde feiten:
-```markdown
-## Facts
-- User werkt als product manager bij Acme Corp
-- User heeft voorkeur voor beknopte antwoorden
-- User's hond heet Max
-- Deadline Q2 review: 15 mei 2026
-```
-
-Hermes **laadt relevante memory-items** bij elke run via retrieval, niet de hele file. Dit houdt de context-window efficient.
-
-**Fase A — Memory weergeven + handmatig beheren (MVP)**
-- Lijst van alle memory-items: feit + bron (automatisch/handmatig) + datum
-- `+ Add` → vrij tekstveld of gestructureerd (categorie: feit, deadline, voorkeur)
-- Delete knop per item
-- Memory-items zijn bewerkbaar
-
-**Fase B — Automatische memory-extractie**
-- Hermes extraheert na elke sessie automatisch nieuwe feiten
-- "New memory detected" notificatie in UI
-- User kan voorgestelde memories goedkeuren of verwerpen
-- Confidence-score per automatisch item
-
-**Fase C — Memory categorieën + organisatie**
-Typen:
-- **Feiten**: wie de user is, werk, context
-- **Deadlines & afspraken**: datumgebonden herinneringen
-- **Voorkeuren**: communicatiestijl, tools, formaat
-- **Lopende projecten**: actieve context voor terugkerende taken
-- **Sessie-samenvattingen**: gecondenseerde gesprekshistory
-
-**Fase D — Memory-search + tijdlijn**
-- Zoekbalk binnen memories
-- Tijdlijn-view: memories gesorteerd op wanneer ze zijn toegevoegd
-- "Memory used in this conversation": transparantie welke items de agent heeft gebruikt
-- Export: download `MEMORY.md` als plaintext
-
-**Fase E — Proactieve memory-inzet**
-- "Herinnering": Hermes signaleert wanneer een deadline nadert
-- "Context herstel": bij nieuw gesprek laadt Hermes automatisch relevante vorige context
-- Cross-workspace memory-sharing (opt-in): teams die memory-facts delen
-
----
-
-## Technische Architectuur — Volledig Overzicht
-
-```
-React (UI)
-  │
-  ├── Sandbox lifecycle
-  │   ├── POST /sandbox/create         → sandbox aanmaken bij page load
-  │   ├── POST /sandbox/heartbeat      → TTL verlengen
-  │   └── POST /sandbox/promote        → sandbox → account na signup
-  │
-  ├── Auth
-  │   ├── POST /auth/google
-  │   └── POST /auth/email/start|verify
-  │
-  ├── Streaming
-  │   └── GET /stream/:session_id      → SSE (Hermes output + token events)
-  │
-  ├── Brain > Tools
-  │   ├── GET/POST /connectors/oauth   → OAuth flows
-  │   ├── GET /connectors/status       → connector status
-  │   ├── DELETE /connectors/{provider} → disconnect
-  │   ├── GET /skills/browse           → skill library
-  │   ├── POST /skills/install         → installeren
-  │   ├── GET /skills/installed        → overzicht
-  │   ├── PATCH /skills/{skill_id}     → toggle activatie
-  │   └── DELETE /skills/{skill_id}    → verwijderen
-  │
-  ├── Brain > Knowledge
-  │   ├── GET/PUT /brain/knowledge/identity   → IDENTITY.md / SOUL.md
-  │   └── GET/POST /brain/knowledge/files     → knowledge files
-  │
-  └── Brain > Memory
-      ├── GET /brain/memory            → items lijst
-      ├── POST /brain/memory           → item toevoegen
-      ├── PATCH /brain/memory/{id}     → item bewerken
-      └── DELETE /brain/memory/{id}    → item verwijderen
-
-Mastra (TypeScript API-laag)
-  │  authenticatie + autorisatie
-  │  sandbox lifecycle management
-  │  token budgetten per tier
-  │  schrijft/leest Hermes workspace files
-  │  encrypted connector-token opslag
-  │
-Hermes (Python agent runtime) — gedeeld proces, namespace-isolatie
-  /hermes-data/
-    sandbox/{sandbox_id}/      ← anonieme bezoekers (TTL 30 min)
-    {user_id}/
-      IDENTITY.md              ← agent-persona
-      SOUL.md                  ← gedragsregels en waarden
-      USER.md                  ← user-profiel
-      MEMORY.md                ← persistent facts
-      skills/                  ← geïnstalleerde skills
-      knowledge/               ← uploaded bestanden + embeddings
-      sessions/                ← sessie-samenvattingen
-    connectors/                ← OAuth tokens (encrypted, per user)
-```
+Per project eigen Hermes namespace: `/hermes-data/{user_id}/projects/{project_id}/`.
 
 ---
 
@@ -1162,100 +587,161 @@ Hermes (Python agent runtime) — gedeeld proces, namespace-isolatie
 
 ```
 Week 1  — Fundament + live sandbox (kritieke path)
-  ├── F-01  LandingPage layout              ✅     
-  ├── F-02  SignupPanel (statisch)           ✅     
-  ├── F-04  SandboxWorkspace shell (skeleton/loading)
-  ├── F-05  ChatMessage componenten          ✅     
-  ├── F-06  MorphButton component            ✅     
-  ├── F-07  SSE streaming consumer hook      ✅      ← vervroegd van week 2
-  ├── B-01  Auth endpoints                   ✅ (stub)
-  ├── B-02  Sandbox provisioning                    ← NIEUW, blokkeert F-04
-  ├── B-03  Mastra ↔ Hermes bridge (MCP)            ← blokkeert alles
-  └── B-04  SSE streaming pipeline           ◐      ← lokale demo live, productie wacht op B-03
+  ├── F-01  LandingPage layout                     ✅
+  ├── F-02  SignupPanel (statisch)                  ✅
+  ├── F-04  SandboxWorkspace shell (skeleton)
+  ├── F-05  ChatMessage componenten                 ✅
+  ├── F-06  MorphButton component                   ✅
+  ├── F-07  SSE streaming consumer hook             ✅ (mock)
+  ├── B-01  Auth endpoints                          ✅ (stub)
+  ├── B-02  Sandbox provisioning                    ← blokkeert F-04
+  ├── B-03  Mastra ↔ Hermes bridge (MCP)            🔴 kritiek pad
+  └── B-04  SSE streaming pipeline                  ◐ (lokale demo live)
 
 Week 2  — Integratie + streaming
   ├── F-04  SandboxWorkspace live (SSE inplugged)
-  ├── F-05  BudgetBar component (token-indicator)
-  ├── B-04  SSE streaming pipeline (+ token usage events) ◐
-  └── B-05  Token teller (sandbox + gratis tier)
+  ├── F-04  BudgetBar component
+  ├── B-04  SSE streaming pipeline productie
+  └── B-05  Token teller (sandbox + gratis tier)    ◐ (stub live)
 
-Week 3  — Shell + Brain modules
-  ├── F-03  Sidebar + Brain UI shell (Tools, Knowledge, Memory tabs)
-  ├── F-04  Volledige transitie-animaties (sandbox → workspace)
-  ├── F-09  Routing
-  ├── B-06  Hermes namespace isolatie (sandbox + user)
-  └── Brain  Knowledge: Identity + Soul + User-profiel (MVP)
+Week 3  — Sidebar + nieuwe features + split view
+  ├── F-03  WorkspaceSidebar (arcamatrix-sidebar.html)
+  ├── F-09  Routing (/workspace, /account, /tasks, /projects)
+  ├── F-13  Secrets UI                              NIEUW
+  ├── F-14  Projects UI                             NIEUW
+  ├── F-16  Visual Split View ("Bouw modus")        NIEUW
+  ├── F-04  Volledige transitie-animaties
+  ├── B-06  Hermes namespace isolatie
+  ├── B-13  Secrets API                             NIEUW
+  ├── B-14  Projects API                            NIEUW
+  └── B-16  Hermes bouw-gedrag + preview SSE        NIEUW
 
-Week 4  — Afwerking + QA
+Week 4  — Account-pagina, Brain, QA
   ├── F-10  Mobile layout
+  ├── F-11  Tools → Integrations (connector cards)
+  ├── F-12  Tools → Skills (browse + install)
+  ├── F-15  Account-pagina (Profiel / Brain / Billing / API)
   ├── B-07  Hermes gateway (WhatsApp/Telegram)
-  ├── B-08  GDPR checks (sandbox TTL cleanup, delete account)
-  ├── Brain  Memory: weergeven + handmatig beheren (MVP)
-  ├── Brain  Skills: browse + installeren (MVP)
-  ├── Brain  Connectors: read-only OAuth (MVP)
-  └── QA    End-to-end: landing → sandbox → Hermes → signup → promote → workspace
+  ├── B-08  GDPR checks
+  ├── B-09  Connectors OAuth API
+  ├── B-10  Skills API
+  ├── B-11  Brain Knowledge API
+  ├── B-12  Brain Memory API
+  └── QA    End-to-end: landing → sandbox → signup → workspace → account
 ```
 
 ---
 
-## Brain-modules — Fasering & Prioritering
+## Brain-modules — Fasering
 
-| Fase | Module | Deliverable | Prioriteit |
-|------|--------|-------------|------------|
-| **MVP** | Knowledge: Identity + Soul + User | Bewerken + opslaan IDENTITY.md / SOUL.md / USER.md | Hoog |
-| **MVP** | Memory: weergeven + handmatig | Items tonen, toevoegen, verwijderen | Hoog |
-| **MVP** | Skills: browse + installeren | Skills-registry + install-flow | Hoog |
-| **MVP** | Connectors: read-only OAuth | Google Calendar, Gmail, GitHub | Hoog |
-| **Fase B** | Memory: auto-extractie | Post-sessie memory-suggesties | Middel |
-| **Fase B** | Knowledge Files: upload + index | PDF/DOCX upload + embedding | Middel |
-| **Fase B** | Connectors: write-scope | Gmail sturen, Sheets schrijven | Middel |
-| **Fase B** | Soul-elementen | Gestructureerde toon/empathie/proactiviteit sliders | Middel |
-| **Fase B** | Skill management | Versies, toggle, gebruik-statistieken | Middel |
-| **Fase B** | User-profiel uitgebreid | Werkcontext, voorkeuren, tijdzone | Middel |
-| **Fase C** | Skills: custom aanmaken | Markdown-editor + skill-creator | Later |
-| **Fase C** | Memory: categorieën + zoeken | Organisatie + tijdlijn | Later |
-| **Fase C** | Knowledge graph | Relatie-visualisatie, conflict-detectie | Later |
-| **Fase C** | Meerdere persona's | Workspace agent-switching | Later |
-| **Fase C** | Automatische profielverrijking | Hermes detecteert user-info uit gesprekken | Later |
+| Fase | Module | Deliverable | Prio |
+|------|--------|-------------|------|
+| **MVP** | Account → Brain → Identity + Soul | IDENTITY.md / SOUL.md bewerken | Hoog |
+| **MVP** | Account → Brain → User-profiel | USER.md form | Hoog |
+| **MVP** | Account → Brain → Memory | Items tonen, toevoegen, verwijderen | Hoog |
+| **MVP** | Account → Brain → Knowledge Files | Upload + lijst | Hoog |
+| **MVP** | Tools → Skills browse + installeren | Skills-registry + install-flow | Hoog |
+| **MVP** | Tools → Integrations read-only OAuth | Google Calendar, Gmail, GitHub | Hoog |
+| **MVP** | Secrets | Encrypted key/value store | Hoog |
+| **MVP** | Projects | Project CRUD + per-project Tasks/Files/Chats | Hoog |
+| **Fase B** | Memory auto-extractie | Post-sessie memory-suggesties | Middel |
+| **Fase B** | Knowledge Files upload + index | PDF/DOCX + embedding | Middel |
+| **Fase B** | Connectors write-scope | Gmail sturen, Sheets schrijven | Middel |
+| **Fase B** | Soul-elementen | Toon/empathie/proactiviteit sliders | Middel |
+| **Fase C** | Custom skills | Markdown-editor + skill-creator | Later |
+| **Fase C** | Memory categorieën + zoeken | Tijdlijn, organisatie | Later |
 | **Fase C** | Custom connectors | OpenAPI spec upload | Later |
-| **Fase D** | Knowledge: web clips + sync | Browser extension, Drive sync | Roadmap |
-| **Fase D** | Skills: marketplace | Publiceren + ratings | Roadmap |
-| **Fase D** | Memory-search + tijdlijn | Zoekbalk, export, transparantie | Roadmap |
-| **Fase E** | Proactieve memory | Deadline-reminders, cross-workspace sharing | Roadmap |
+| **Fase D** | Skills marketplace | Publiceren + ratings | Roadmap |
+| **Fase D** | Memory-search + tijdlijn | Export, transparantie | Roadmap |
+
+---
+
+## Technische Architectuur — API Overzicht
+
+```
+React (UI)
+  │
+  ├── Sandbox lifecycle
+  │   ├── POST /sandbox/create
+  │   ├── POST /sandbox/heartbeat
+  │   └── POST /sandbox/promote
+  ├── Auth
+  │   ├── POST /auth/google
+  │   └── POST /auth/email/start|verify
+  ├── Streaming
+  │   └── GET /stream/:session_id        (SSE)
+  ├── Tools → Integrations
+  │   ├── POST /connectors/oauth/start|callback
+  │   ├── GET  /connectors/status
+  │   └── DELETE /connectors/{provider}
+  ├── Tools → Skills
+  │   ├── GET    /skills/browse
+  │   ├── POST   /skills/install
+  │   ├── GET    /skills/installed
+  │   ├── PATCH  /skills/{id}
+  │   └── DELETE /skills/{id}
+  ├── Secrets (NIEUW)
+  │   ├── GET    /secrets
+  │   ├── POST   /secrets
+  │   └── DELETE /secrets/{name}
+  ├── Projects (NIEUW)
+  │   ├── GET    /projects
+  │   ├── POST   /projects
+  │   ├── PATCH  /projects/{id}
+  │   └── DELETE /projects/{id}
+  └── Account → Brain
+      ├── GET/PUT  /brain/knowledge/identity
+      ├── GET/POST /brain/knowledge/files
+      ├── GET      /brain/memory
+      ├── POST     /brain/memory
+      ├── PATCH    /brain/memory/{id}
+      └── DELETE   /brain/memory/{id}
+
+Mastra (TypeScript API-laag)
+  │  auth · sandbox lifecycle · token budgetten
+  │  encrypted secrets + connector-tokens per user
+  │  schrijft/leest Hermes workspace files
+  │
+Hermes (Python — gedeeld proces, namespace-isolatie)
+  /hermes-data/
+    sandbox/{sandbox_id}/          ← anoniem (TTL 30 min)
+    {user_id}/
+      IDENTITY.md · SOUL.md · USER.md · MEMORY.md
+      skills/ · knowledge/ · sessions/
+    projects/{project_id}/         ← per-project namespace (NIEUW)
+```
 
 ---
 
 ## Prioriteitsvolgorde openstaande beslissingen
 
-| Prioriteit | Beslissing | Wie | Blokkeert |
-|-----------|------------|-----|-----------|
-| Nu | **#2** Welk openingsbericht toont de sandbox? | Product | Eerste indruk product |
-| Week 1 | **#9** LLM provider (OpenRouter/OpenAI/Anthropic)? | Arch | Kosten sandbox per pageview |
-| Week 1 | **#1** Magic link of wachtwoord? | Product | B-01 |
-| Week 3 | **#4** Hosting EU? | DevOps | B-06, B-08 |
-| Week 3 | **#10** Hermes gateway: ingebouwd of eigen? | Arch | B-07 scope |
-| Week 3 | **#13 / B2** Knowledge embeddings: lokaal (FAISS) of hosted (Pinecone/Weaviate)? | Arch | Brain Knowledge |
-| Week 3 | **#14 / B3** Memory-extractie: automatisch of opt-in? | Product | Brain Memory |
-| Week 3 | **B4** Connector-tokens: encrypted in Mastra DB of in Hermes workspace? | Arch | Security-architectuur |
-| Later | **#5** Analytics (Posthog/Mixpanel/geen)? | Product | Privacy scope |
-| Later | **#15 / B1** Skills-registry: eigen of community? | Arch | Brain Skills |
-| Later | **#16** Sandbox promote-flow UI? | Frontend | F-04 promote state |
-| Later | **B5** Custom skills: public by default of private-first? | Product | Marketplace-beleid |
+| Prio | # | Beslissing | Blokkeert |
+|------|---|------------|-----------|
+| Nu | 2 | Welk openingsbericht toont de sandbox? | Eerste indruk product |
+| Week 1 | 9 | LLM provider (OpenRouter/OpenAI/Anthropic)? | Kosten per pageview |
+| Week 1 | 1 | Magic link of wachtwoord? | B-01 |
+| Week 3 | 4 | Hosting EU (Fly.io, Railway, eigen)? | B-06, B-08 |
+| Week 3 | 10 | Hermes gateway: ingebouwd of eigen? | B-07 scope |
+| Week 3 | 13 | Knowledge embeddings: FAISS of Pinecone? | Brain Knowledge |
+| Week 3 | 14 | Memory-extractie: automatisch of opt-in? | Brain Memory |
+| Week 3 | B4 | Connector-tokens: Mastra DB of Hermes workspace? | Security |
+| Later | 5 | Analytics (Posthog/Mixpanel/geen)? | Privacy scope |
+| Later | 15 | Skills-registry: eigen of community? | Brain Skills |
+| Later | 16 | Sandbox promote-flow UI? | F-04 promote state |
+| Later | B5 | Custom skills: public of private-first? | Marketplace |
 
 ---
 
 ## Handoff voor Claude (frontend)
 
-Start met F-01 → F-02 → F-05 → F-06 → F-07 → F-04 (shell). Deze tickets zijn bouwbaar zonder een draaiende backend. Gebruik `useSandboxStream` met een mock/stub totdat B-04 live is.
+Start met F-01 → F-02 → F-05 → F-06 → F-07 → F-04 (shell). Bouwbaar zonder backend via mock/stub.
 
-Gebruik altijd custom hooks voor Zustand-state — nooit direct `useStore()` aanroepen in componenten. Dit maakt latere refactors triviaal.
-
-De HTML-prototype `arcamatrix-v2.html` is de enige visuele referentie. Gebruik de timingwaarden letterlijk.
-
-MorphButton-trigger: **na eerste Hermes-response** (niet na laatste demo-bericht — er is geen demo-script meer).
+Sidebar-referentie: `arcamatrix-sidebar.html` (8 april 2026). Brain leeft op Account-pagina — **niet** in de sidebar.
+Timing-referentie: `arcamatrix-v2.html`. Gebruik waarden letterlijk.
+State: altijd via custom hooks, nooit direct `useStore()` in componenten.
 
 ## Handoff voor Codex (backend)
 
-Start met **B-02** (sandbox provisioning) en **B-01** (auth) — onafhankelijk van elkaar en deblokkeren alles in week 2. Kies MCP voor **B-03** — `mcp_serve.py` staat al in de Hermes repo.
+Start met B-02 en B-01 parallel. Kritiek pad: **B-03** (MCP bridge). Zodra B-03 draait, kunnen B-04, B-09 t/m B-14 in parallel lopen.
 
-B-04 (SSE streaming) direct daarna — de `useSandboxStream` hook wacht hierop.
+Nieuwe tickets t.o.v. origineel: B-13 (Secrets API) en B-14 (Projects API).
